@@ -1,0 +1,114 @@
+\section{Method}\label{sec:method}
+
+\subsection{Overview}\label{sec:overview}
+
+SLSC compresses the accumulated multi-turn reasoning state into a sequence of atomic mathematical propositions, maintained across turns by a curator agent. Given a mathematical problem $P$ decomposed into sub-questions $q_1, \ldots, q_T$, we denote the compressed state at turn $t$ as $S_t$. Our framework operates in two phases per turn $t$: (1) \textbf{Reasoning}: Agent $\mathcal{A}$ generates response $r_t = \mathcal{A}(P, S_{t-1}, q_t)$, conditioned on the compressed state from the previous turn; (2) \textbf{Curation}: Agent $\mathcal{B}$ updates the state $S_t = \mathcal{B}(S_{t-1}, r_t)$. Figure~\ref{fig:pipeline} illustrates the overall architecture.
+
+\subsection{Agent A: The Reasoner}\label{sec:agent_a}
+
+Agent $\mathcal{A}$ serves as the per-turn reasoning component. At each turn $t$, it receives a structured prompt comprising the original problem $P$, the current compressed state $S_{t-1}$, and the sub-question $q_t$, and produces a natural language response $r_t$:
+\[
+  r_t = \mathcal{A}(P,\; S_{t-1},\; q_t)
+\]
+Agent $\mathcal{A}$ is the frequent-call component of the pipeline, invoked once per turn. Specific model instantiations are described in Section~\ref{sec:setup}.
+
+\subsection{Agent B: The Curator}\label{sec:agent_b}
+
+Agent $\mathcal{B}$ is the core technical contribution of SLSC. It maintains a persistent compressed state by processing $\mathcal{A}$'s response through three sequential sub-steps: extraction, optional formalization, and merging. Algorithm~\ref{alg:curation} summarizes the pipeline.
+
+\begin{algorithm}[t]
+\caption{Agent $\mathcal{B}$ Curation: extract atomic propositions from response, optionally formalize each, then merge into compressed state.}\label{alg:curation}
+\begin{algorithmic}[1]
+\Require $S_{t-1}$,\; $r_t$ \hfill \textit{(current state, Agent $\mathcal{A}$ response)}
+\Ensure $S_t$
+\State $\mathcal{P}_t \gets \textsc{Extract}(r_t)$
+    \Comment{LLM-based proposition extraction}
+\For{each $p \in \mathcal{P}_t$} \hfill \textit{(optional)}
+    \State $p.\mathtt{lean} \gets \textsc{Formalize}(p)$
+        \Comment{Autoformalize to Lean~4}
+\EndFor
+\State $S_t \gets \textsc{Merge}(S_{t-1},\; \mathcal{P}_t)$
+    \Comment{LLM-based deduplication and update}
+\State \Return $S_t$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Extraction}
+
+Given $\mathcal{A}$'s response $r_t$, the extraction step produces a set of atomic propositions $\mathcal{P}_t = \{p_1, \ldots, p_k\}$, where each $p_i$ is a self-contained mathematical claim. We use an LLM-based extractor prompted to identify equations, inequalities, numeric results, and named mathematical properties, while ignoring procedural descriptions and section headers. This yields propositions that are reusable across turns without requiring the full reasoning trace.
+
+The following box shows a representative extraction example on a divisibility problem:
+
+\begin{mdframed}[frametitle={Extraction Example}, frametitlerule=true,
+    frametitlebackgroundcolor=gray!15, backgroundcolor=gray!5,
+    innertopmargin=6pt, innerbottommargin=6pt]
+\small
+\textbf{Input} (excerpt from $r_t$):
+\textit{``Since $d \mid n+7$ and $d \mid 2n+1$, we can compute $d \mid 2(n+7)-(2n+1) = 13$. Therefore $d$ must divide 13 \ldots''}
+
+\medskip
+\textbf{Extracted propositions} $\mathcal{P}_t$:
+\begin{enumerate}[noitemsep,topsep=2pt,label=\arabic*.]
+  \item $d$ divides $n + 7$
+  \item $d$ divides $2n + 1$
+  \item $2(n+7) - (2n+1) = 13$
+  \item $d$ divides $13$
+\end{enumerate}
+\end{mdframed}
+
+\subsubsection{Merging}
+
+The merging step integrates the newly extracted propositions $\mathcal{P}_t$ into the existing state $S_{t-1}$ to produce $S_t$. We apply three LLM-prompted merge rules:
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Deduplication}: semantically equivalent propositions are consolidated into a single entry.
+  \item \textbf{Supersession}: a new proposition that contradicts or subsumes an existing entry replaces it.
+  \item \textbf{Preservation}: propositions with no conflict are retained verbatim.
+\end{itemize}
+
+These rules prevent unbounded state growth while ensuring no established fact is silently overwritten. The merger is implemented as a single prompted call to $\mathcal{B}$; full prompt details appear in Appendix~\ref{app:prompts}.
+
+\subsubsection{Formalization}
+
+As an optional augmentation, each extracted proposition $p$ may be autoformalized into a Lean~4 statement appended alongside its natural language form. We explore Lean~4 augmentation to assess whether structured logical grounding aids the reasoner. Concretely, $\mathcal{B}$ is prompted to produce a \texttt{theorem} stub for each proposition, with the proof obligation left as \texttt{sorry}. We treat this component as optional: our ablation study (Section~\ref{sec:agent_b_ablation}) shows no consistent accuracy gain from formalization, and all primary results are reported without it unless stated otherwise.
+
+\subsection{State Representation}
+\label{sec:state}
+
+The state $S_t$ is rendered as a numbered list of natural language propositions, optionally paired with Lean~4 stubs, and passed directly to $\mathcal{A}$ as part of its prompt context. Each proposition is atomic and ordered by extraction sequence; inter-proposition dependencies are not encoded explicitly. The state has no hard size cap; deduplication during merging controls growth in practice. The following example shows a typical $S_t$ after three curation steps:
+
+\begin{mdframed}[backgroundcolor=gray!5, innertopmargin=6pt, innerbottommargin=6pt]
+\small
+\textbf{[Known facts from prior steps]}\\[4pt]
+\texttt{1.} $d$ divides $n + 7$\\
+\quad\texttt{theorem prop1 : d | (n + 7) := by sorry}\\[3pt]
+\texttt{2.} $d$ divides $2n + 1$\\
+\quad\texttt{theorem prop2 : d | (2*n + 1) := by sorry}\\[3pt]
+\texttt{3.} $2(n+7) - (2n+1) = 13$\\
+\quad\texttt{theorem prop3 : 2*(n+7) - (2*n+1) = 13 := by sorry}\\[3pt]
+\texttt{4.} $d$ divides $13$\\
+\quad\texttt{theorem prop4 : d | 13 := by sorry}
+\end{mdframed}
+
+\subsection{Inference Workflow}
+\label{sec:inference}
+
+Algorithm~\ref{alg:inference} summarizes the end-to-end multi-turn inference procedure.
+
+\begin{algorithm}[t]
+\caption{SLSC Multi-Turn Inference: iterate over sub-questions, alternating Agent $\mathcal{A}$ reasoning and Agent $\mathcal{B}$ state curation, then extract the final answer.}
+\label{alg:inference}
+\begin{algorithmic}[1]
+\Require Problem $P$, sub-questions $\{q_1, \ldots, q_T\}$, agents $\mathcal{A}$, $\mathcal{B}$
+\Ensure Final answer
+\State $S_0 \gets \emptyset$
+    \Comment{empty initial state}
+\For{$t = 1$ \textbf{to} $T$}
+    \State $r_t \gets \mathcal{A}(P,\; S_{t-1},\; q_t)$
+        \Comment{Agent $\mathcal{A}$ reasons}
+    \State $S_t \gets \mathcal{B}(S_{t-1},\; r_t)$
+        \Comment{Agent $\mathcal{B}$ updates state}
+\EndFor
+\State \Return $\textsc{ExtractAnswer}(r_T)$
+\end{algorithmic}
+\end{algorithm}

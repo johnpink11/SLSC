@@ -9,6 +9,9 @@
 % Standard package includes
 \usepackage{times}
 \usepackage{latexsym}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
 
 % For proper rendering and hyphenation of words containing Latin characters (including in bib files)
 \usepackage[T1]{fontenc}
@@ -32,6 +35,10 @@
 %Including images in your LaTeX document requires adding
 %additional package(s)
 \usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{mdframed}
+\usepackage{enumitem}
 
 % If the title and author information does not fit in the area allocated, uncomment the following
 %
@@ -39,7 +46,7 @@
 %
 % and set <dim> to something 5cm or larger.
 
-\title{Instructions for *ACL Proceedings}
+\title{SLSC: Sparse Logic State Compression for Multi-Turn Mathematical Reasoning}
 
 \input{sections/authors}
 
@@ -48,12 +55,14 @@
 
 \input{sections/abstract}
 \input{sections/introduction}
-\input{sections/engines}
-\input{sections/preamble_section}
-\input{sections/document_body}
-\input{sections/bibtex}
+\input{sections/related_work}
+
+\input{sections/method.tex}
+
+\input{sections/experiments.tex}
+\input{sections/Conclusion}
+
 \input{sections/limitations}
-\input{sections/acknowledgments}
 
 % Bibliography entries for the entire Anthology, followed by custom entries
 %\bibliography{anthology,references}

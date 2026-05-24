@@ -1,9 +1,91 @@
 \section{Introduction}
+Multi-turn interaction is rapidly becoming the dominant mode in which language models are deployed, yet recent work has documented substantial 
+performance degradation in this regime: \cite{lanban2025lost} report an average accuracy drop of 39\% across six generation task---including mathematics---
+over 200{,}000 simulated conversations with 15 top open- and closed-weight LLMs, characterizing this as a ``lost-in-conversation'' failure. We study a specific and
+under-examined instance of this broader phenomenon: \emph{multi-turn mathematical reasoning with explicit numerical dependencies}, in which each sub-question is fully
+specified, but its solution depends on the numerical result of the preceding turn. This setting captures a wide range of practical quantitative tasks---financial calculations,
+multi-step engineering analyses, scientific computations---that decompose naturally into chained sub-problems. It is particularly acute for small language models 
+(SLMs, $\sim $1B--10B parameters), which are increasingly deployed under cost and latency constraints but whose limited attention capacity leaves them vulnerable to errors
+that compound across turns.
 
-These instructions are for authors submitting papers to *ACL conferences using \LaTeX. They are not self-contained. All authors must follow the general instructions for *ACL proceedings,\footnote{\url{http://acl-org.github.io/ACLPUB/formatting.html}} and this document contains additional instructions for the \LaTeX{} style files.
+The central technical question in this regime is how mathematical intermediate state should be maintained across turns: which equations, constraints, and partial results from
+prior reasoning must remain accessible to subsequent turns, and in what representational form. Current approaches uniformly store this state as unstructured text. Prompt 
+compression methods such as LLMLingua~\citep{jiang2023llmlingua} operate at the token level, agnostic to which tokens encode mathematical constraints. Reasoning-summarization 
+methods such as Reflexion~\citep{shinn2023reflexion} and InftyThink~\citep{INFTYTHINK_CITE} condense prior reasoning into natural-language narratives in which numerical constraints
+stated in passing receive no privileged representation. Raw context accumulation simply defers the problem until attention can no longer locate the relevant constraint---a fragility
+consistent with \citet{liu2024lost}, who show that language models do not robustly use information in long input contexts, with utilization varying sharply by position. We argue 
+these approaches share an assumption---that reasoning state should be flat text---that is poorly matched to mathematical reasoning, where the state needed across turns is intrinsically
+typed: invariants, active variables, binding equations and inequalities, invalidated paths, and the remaining reasoning gap, each with a distinct role in subsequent inference. 
 
-The templates include the \LaTeX{} source of this document (\texttt{acl\_latex.tex}),
-the \LaTeX{} style file used to format it (\texttt{acl.sty}),
-an ACL bibliography style (\texttt{acl\_natbib.bst}),
-an example bibliography (\texttt{custom.bib}),
-and the bibliography for the ACL Anthology (\texttt{anthology.bib}).
+We propose \emph{Sparse Logic State Compression} (SLSC), a twin-agent framework in which a reasoning agent $\mathcal{A}$ generates natural-language chains of thought while a curator
+agent $\mathcal{B}$ periodically distills accumulated context into a structured state object consisting of atomic mathematical propositions. The reasoning agent's working context
+is then replaced by this object, giving each constraint a persistent and addressable location rather than leaving it to be recovered through attention over an ever-growing context.
+Figure~\ref{fig:comparison} contrasts the two representations.
+
+\begin{figure*}[!t]
+\centering
+
+\noindent
+\begin{minipage}[t]{0.48\textwidth}
+\begin{mdframed}[
+    frametitle={\textbf{Baseline: Natural-Language Summary}},
+    frametitlerule=true,
+    frametitlebackgroundcolor=gray!15,
+    backgroundcolor=gray!3,
+    innertopmargin=6pt, innerbottommargin=6pt
+]
+\scriptsize\textit{Flat text; intermediate constraints embedded in prose.}\\[4pt]
+\small
+\textit{Context passed to Agent $\mathcal{A}$ at Turn 3:}\\[4pt]
+``To approach this problem, I first considered the divisors of $n+7$ and $2n+1$. By examining the linear combination $2(n+7) - (2n+1)$, I observed that this simplifies to 13, which means \colorbox{yellow!40}{any common divisor $d$ must divide 13}. Since 13 is prime, the possible values are $d=1$ or $d=13$. I then proceeded to analyze the case $d=13$, which requires $n+7 \equiv 0 \pmod{13}$, leading to $n \equiv 6 \pmod{13}$. Combined with the bounds, I narrowed down to candidates $n = 6, 19, 32, \ldots$, verifying each against the secondary constraint $\ldots$''\\[6pt]
+\hrule\vspace{4pt}
+\scriptsize $\sim$185 tokens $\;\bullet\;$ no addressable structure $\;\bullet\;$ key fact mid-sentence
+\end{mdframed}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\begin{mdframed}[
+    frametitle={\textbf{SLSC: Sparse Logic State}},
+    frametitlerule=true,
+    frametitlebackgroundcolor=blue!15,
+    backgroundcolor=blue!3,
+    innertopmargin=6pt, innerbottommargin=6pt
+]
+\scriptsize\textit{Atomic propositions; each independently addressable.}\\[4pt]
+\small
+\textit{Context passed to Agent $\mathcal{A}$ at Turn 3:}\\[4pt]
+\texttt{1.} $d$ divides $n + 7$\\[2pt]
+\texttt{2.} $d$ divides $2n + 1$\\[2pt]
+\texttt{3.} $2(n+7) - (2n+1) = 13$\\[2pt]
+\texttt{4.} \colorbox{yellow!40}{$d$ divides $13$}\\[2pt]
+\texttt{5.} $d \in \{1, 13\}$\\[2pt]
+\texttt{6.} If $d = 13$: $n \equiv 6 \pmod{13}$\\[2pt]
+\texttt{7.} Candidates: $n \in \{6, 19, 32, \ldots\}$\\[6pt]
+\hrule\vspace{4pt}
+\scriptsize $\sim$55 tokens $\;\bullet\;$ each fact retrievable $\;\bullet\;$ persistent slot per constraint
+\end{mdframed}
+\end{minipage}
+
+\caption{Comparison of context representations at Turn 3 of a multi-turn mathematical reasoning task. \textbf{Left}: Natural-language summary embeds constraints in prose, requiring attention over unstructured text to locate key facts (highlighted). \textbf{Right}: SLSC maintains atomic propositions in numbered slots, giving each constraint a persistent and addressable location. SLSC reduces token count by $\sim$70\% while improving constraint retrievability.}
+\label{fig:comparison}
+\end{figure*}
+
+To evaluate SLSC, we construct a 500-problem multi-turn mathematical reasoning dataset with explicit numerical-dependency annotation by decomposing problems from MATH-500
+~\citep{lightman2023math500} into chains of dependent sub-questions. We compare three context-maintenance strategies---No Compression (raw accumulation), Natural-Language Summary(a
+Reflexion-style condensed narrative), and SLSC---paired with reasoner models spanning four size from the Qwen3.5 family~\citep{} (0.8B, 2B, 4B, 9B), with a fixed \texttt{gemma-3-27b-it}
+~\citep{} curator. Across this grid, SLSC improves final-answer accuracy by [Z\%] over No Compression and [Z'\%] over the natural-language summary baseline while reducing per-turn
+token consumption by [W\%]. Critically, the accuracy gap between SLSC and No Compression [widens / narrows] as reasoner size [decrease / increase], indicating that the limited attention
+capacity of SLMs make them disproportionately reliant on structured state maintenance for chained mathematical reasoning.
+
+We make four contributions: 
+\begin{enumerate}[noitemsep, topsep=2pt]
+    \item We construct, to our knowledge, the first multi-turn mathematical reasoning dataset with explicit numerical-dependency structure, complementing existing multi-turn benchmarks that 
+    focus on underspecification rather than numerical chaining.
+    \item We document the severity of context-accumulation failure in multi-turn mathematical reasoning at SLM scale, and show that the benefit of structured state maintenance scales inversely
+    with reasoner size---situating this as a distinctly SLM-scale bottleneck and extending the lost-in-conversation and long-context utilization literature to numerically chained settings.
+    \item We propose SLSC, a twin-agent state-compression framework, and show that it improves multi-turn final-answer accuracy by [Z\%] and reduce per-turn token consumption by [W\%] over raw-
+    context accumulation, with consistent gains across all four evaluated SLM reasoner sizes.
+    \item Contrary to our initial hypothesis, we find through ablation that the choice of state representation syntax---Lean-style formal language versus a simplified structured schema---does not
+    significantly affect performance: it is the \emph{granularity} of slotted state, not the \emph{formality} of its syntax, that drives the gains. This has practical implications at SLM scale,
+    where simplified schema are substantially more reliable to generate than formal-language ones.
+\end{enumerate}
