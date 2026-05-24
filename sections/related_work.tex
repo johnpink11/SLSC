@@ -1,2 +1,40 @@
-\section{Related work}
-Related work part.
+\section{Related work} \label{sec:realted}
+
+\paragraph{Multi-turn reasoning degradation.}
+Recent work documents systematic performance loss in multi-turn settings. \citet{lanban2025lost} report an average 39\% accuracy drop
+across six generation tasks over 200{,}000 simulated conversations with 15 frontier models, characterizing failure as a ``lost-in-conversation''
+phenomenon. \citet{liu2024lost} show that language models do not robustly use information in long contexts, with retrieval accuracy varying 
+sharply by position. These findings establish multi-turn degradation as broad-spectrum, but existing multi-turn benchmarks largely target 
+underspecification and clarification rather than numerical chaining. Our dataset complements this literature by isolating numerical-dependency
+failures, where each sub-question is fully specified but its solution requires the prior turn's numerical result.
+
+\paragraph{Prompt and token-level compression}
+Prompt compression methods reduce input length while attempting to preserve task performance. LLMLingua~\citep{jiang2023llmlingua} and its 
+extensions identify and remove low-information tokens via small auxiliary models, operating at the lexical level without awareness of which 
+tokens encode task-critical structure. By design, a numerical constant inside an inequality and a discourse adjective receive comparable
+treatment. SLSC differs along two axes: compression operates over semantic units---atomic mathematical propositions---rather than tokens, and 
+is performed by a dedicated curator agent prompted to identify mathematical content. We view the two approaches as orthogonal and do not include 
+token-level compression in our experimental comparison, which focuses on state-maintenance strategies sharing the same multi-turn decomposed 
+setup.
+
+\paragraph{Reasoning-state compression and summarization}
+A closer line of work compresses intermediate reasoning state rather than raw inputs. Reflexion~\citep{shinn2023reflexion} condenses prior 
+trajectories into natural-language reflections that condition subsequent attempts. InftyThink~\citep{INFTYThink_CITE} extends this idea to 
+long-horizon reasoning by iteratively  summarizing chain-of-thought and re-prompt the model on the summary, achieving large context savings.
+Conceptually these methods sit closest to SLSC, and two differences are central. First, both produce flat natural-language summaries in which 
+numerical constraints stated in passing receive no privileged representation; SLSC enforces an atomic-proposition schema in which each targets
+monolithic single-question reasoning with internally-induced summarization points and assumes a trained summarization checkpoint, whereas
+our setting is externally-decomposed multi-turn dialogue with explicit numerical dependencies and is fully training-free. A  head-to-head 
+empirical comparison would require either retraining InftyThink on our dependency-annotated dataset or rebuilding it as a prompted pipeline;
+we leave this to future work and restrict our experiments to training-free, setup-compatible baselines. 
+
+\paragraph{Formal language augmentation for reasoning.}
+A separate line of work explores formal-language augmentation for mathematical reasoning. Autoformalization~\citep{wu2022autoformalizatioin}
+translates natural-language statements into formal expressions; Draft, Sketch, and Prove~\citep{jiang2023draft} interleaves natural-language 
+drafting with formal verification; LeanDojo~\citep{yang2023leandojo} provides infrastructure for retrieval-augmented theorem proving. These 
+works target end-to-end proof construction or single-statement formalization, with verifier feedback in the loop. SLSC's Lean~4 augmentation
+(Section~\ref{sec:agent_b}) instead explores a lighter use of formal language---type-annotating extracted propositions without a verifier---
+and our ablation (Section~\ref{sec:lean_ablation}) finds no consistent accuracy gain. This negative result aligns with the broader emphasis on
+verifier-grounded formalization: absent a Lean kernel check, the type annotation provides no signal that the reasoner can reliably exploit. 
+SLSC thus occupies a specific intersection in this landscape---training-free, multi-turn, mathematics-targeted, and operating on semantic units
+of intermediate state---with raw context accumulation as the strongest setup-compatible baseline.
