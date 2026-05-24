@@ -2,7 +2,7 @@
 
 \subsection{Overview}\label{sec:overview}
 
-SLSC compresses the accumulated multi-turn reasoning state into a sequence of atomic mathematical propositions, maintained across turns by a curator agent. Given a mathematical problem $P$ decomposed into sub-questions $q_1, \ldots, q_T$, we denote the compressed state at turn $t$ as $S_t$. Our framework operates in two phases per turn $t$: (1) \textbf{Reasoning}: Agent $\mathcal{A}$ generates response $r_t = \mathcal{A}(P, S_{t-1}, q_t)$, conditioned on the compressed state from the previous turn; (2) \textbf{Curation}: Agent $\mathcal{B}$ updates the state $S_t = \mathcal{B}(S_{t-1}, r_t)$. Figure~\ref{fig:pipeline} illustrates the overall architecture.
+SLSC encodes the accumulated multi-turn reasoning state as a sequence of atomic mathematical propositions, maintained across turns by a curator agent. Given a mathematical problem $P$ decomposed into sub-questions $q_1, \ldots, q_T$, we denote the compressed state at turn $t$ as $S_t$. The framework operates in two phases per turn $t$: (1) \textbf{Reasoning}: Agent $\mathcal{A}$ generates response $r_t = \mathcal{A}(P, S_{t-1}, q_t)$, conditioned on the compressed state from the previous turn; (2) \textbf{Curation}: Agent $\mathcal{B}$ updates the state $S_t = \mathcal{B}(S_{t-1}, r_t)$. Figure~\ref{fig:pipeline} illustrates the overall architecture.
 
 \subsection{Agent A: The Reasoner}\label{sec:agent_a}
 
@@ -14,7 +14,7 @@ Agent $\mathcal{A}$ is the frequent-call component of the pipeline, invoked once
 
 \subsection{Agent B: The Curator}\label{sec:agent_b}
 
-Agent $\mathcal{B}$ is the core technical contribution of SLSC. It maintains a persistent compressed state by processing $\mathcal{A}$'s response through three sequential sub-steps: extraction, optional formalization, and merging. Algorithm~\ref{alg:curation} summarizes the pipeline.
+Agent $\mathcal{B}$ maintains a persistent compressed state by processing $\mathcal{A}$'s response through three sequential sub-steps: extraction, optional formalization, and merging. Algorithm~\ref{alg:curation} summarizes the pipeline.
 
 \begin{algorithm}[t]
 \caption{Agent $\mathcal{B}$ Curation: extract atomic propositions from response, optionally formalize each, then merge into compressed state.}\label{alg:curation}
@@ -35,7 +35,7 @@ Agent $\mathcal{B}$ is the core technical contribution of SLSC. It maintains a p
 
 \subsubsection{Extraction}
 
-Given $\mathcal{A}$'s response $r_t$, the extraction step produces a set of atomic propositions $\mathcal{P}_t = \{p_1, \ldots, p_k\}$, where each $p_i$ is a self-contained mathematical claim. We use an LLM-based extractor prompted to identify equations, inequalities, numeric results, and named mathematical properties, while ignoring procedural descriptions and section headers. This yields propositions that are reusable across turns without requiring the full reasoning trace.
+Given $\mathcal{A}$'s response $r_t$, the extraction step produces a set of atomic propositions $\mathcal{P}_t = \{p_1, \ldots, p_k\}$, where each $p_i$ is a self-contained mathematical claim. We use an LLM-based extractor prompted to identify equations, inequalities, numeric results, and named mathematical properties, while ignoring procedural descriptions and section headers. This yields propositions in slot form without requiring the full reasoning trace.
 
 The following box shows a representative extraction example on a divisibility problem:
 
@@ -70,7 +70,7 @@ These rules prevent unbounded state growth while ensuring no established fact is
 
 \subsubsection{Formalization}
 
-As an optional augmentation, each extracted proposition $p$ may be autoformalized into a Lean~4 statement appended alongside its natural language form. We explore Lean~4 augmentation to assess whether structured logical grounding aids the reasoner. Concretely, $\mathcal{B}$ is prompted to produce a \texttt{theorem} stub for each proposition, with the proof obligation left as \texttt{sorry}. We treat this component as optional: our ablation study (Section~\ref{sec:agent_b_ablation}) shows no consistent accuracy gain from formalization, and all primary results are reported without it unless stated otherwise.
+As an optional augmentation, each extracted proposition $p$ may be autoformalized into a Lean~4 statement appended alongside its natural language form. We explore Lean~4 augmentation to assess whether formal-language grounding affects downstream reasoning. Concretely, $\mathcal{B}$ is prompted to produce a \texttt{theorem} stub for each proposition, with the proof obligation left as \texttt{sorry}. We treat this component as optional: our ablation study (Section~\ref{sec:agent_b_ablation}) shows that formalization consistently degrades accuracy, and all primary results are reported without it unless stated otherwise.
 
 \subsection{State Representation}
 \label{sec:state}

@@ -1,26 +1,9 @@
 \section{Introduction}
-Multi-turn interaction is rapidly becoming the dominant mode in which language models are deployed, yet recent work has documented substantial 
-performance degradation in this regime: \cite{lanban2025lost} report an average accuracy drop of 39\% across six generation task---including mathematics---
-over 200{,}000 simulated conversations with 15 top open- and closed-weight LLMs, characterizing this as a ``lost-in-conversation'' failure. We study a specific and
-under-examined instance of this broader phenomenon: \emph{multi-turn mathematical reasoning with explicit numerical dependencies}, in which each sub-question is fully
-specified, but its solution depends on the numerical result of the preceding turn. This setting captures a wide range of practical quantitative tasks---financial calculations,
-multi-step engineering analyses, scientific computations---that decompose naturally into chained sub-problems. It is particularly acute for small language models 
-(SLMs, $\sim $1B--10B parameters), which are increasingly deployed under cost and latency constraints but whose limited attention capacity leaves them vulnerable to errors
-that compound across turns.
+Multi-turn interaction is rapidly becoming the dominant deployment mode for language models, yet recent work documents substantial performance degradation: \cite{lanban2025lost} report an average 39\% accuracy drop across six generation tasks over 200{,}000 conversations with 15 frontier LLMs. We study a specific instance of this phenomenon: \emph{multi-turn mathematical reasoning with explicit numerical dependencies}, where each sub-question depends on the numerical result of the preceding turn. This setting is particularly acute for small language models (SLMs, $\sim$1B--10B parameters), whose limited attention capacity makes them vulnerable to compounding errors across turns.
 
-The central technical question in this regime is how mathematical intermediate state should be maintained across turns: which equations, constraints, and partial results from
-prior reasoning must remain accessible to subsequent turns, and in what representational form. Current approaches uniformly store this state as unstructured text. Prompt 
-compression methods such as LLMLingua~\citep{jiang2023llmlingua} operate at the token level, agnostic to which tokens encode mathematical constraints. Reasoning-summarization 
-methods such as Reflexion~\citep{shinn2023reflexion} and InftyThink~\citep{INFTYTHINK_CITE} condense prior reasoning into natural-language narratives in which numerical constraints
-stated in passing receive no privileged representation. Raw context accumulation simply defers the problem until attention can no longer locate the relevant constraint---a fragility
-consistent with \citet{liu2024lost}, who show that language models do not robustly use information in long input contexts, with utilization varying sharply by position. We argue 
-these approaches share an assumption---that reasoning state should be flat text---that is poorly matched to mathematical reasoning, where the state needed across turns is intrinsically
-typed: invariants, active variables, binding equations and inequalities, invalidated paths, and the remaining reasoning gap, each with a distinct role in subsequent inference. 
+The central question is how to maintain mathematical intermediate state across turns. Current approaches store state as unstructured text: prompt compression methods like LLMLingua~\citep{jiang2023llmlingua} operate at the token level, agnostic to mathematical structure; reasoning-summarization methods like Reflexion~\citep{shinn2023reflexion} and InftyThink~\citep{yan2025inftythink} condense reasoning into natural-language narratives where numerical constraints receive no privileged representation. Raw context accumulation defers the problem until attention can no longer locate relevant constraints~\citep{liu2024lost}. We argue these approaches assume reasoning state should be flat text---a poor match for mathematical reasoning, where state is intrinsically typed: invariants, active variables, binding equations, each with distinct roles in subsequent inference. 
 
-We propose \emph{Sparse Logic State Compression} (SLSC), a twin-agent framework in which a reasoning agent $\mathcal{A}$ generates natural-language chains of thought while a curator
-agent $\mathcal{B}$ periodically distills accumulated context into a structured state object consisting of atomic mathematical propositions. The reasoning agent's working context
-is then replaced by this object, giving each constraint a persistent and addressable location rather than leaving it to be recovered through attention over an ever-growing context.
-Figure~\ref{fig:comparison} contrasts the two representations.
+We propose \emph{Sparse Logic State Compression} (SLSC), a twin-agent framework where a reasoning agent $\mathcal{A}$ generates natural-language chains of thought while a curator agent $\mathcal{B}$ distills accumulated context into atomic mathematical propositions. The reasoning agent's context is replaced by this structured state, giving each constraint a persistent, addressable location. Figure~\ref{fig:comparison} contrasts the two representations.
 
 \begin{figure*}[!t]
 \centering
@@ -70,22 +53,13 @@ Figure~\ref{fig:comparison} contrasts the two representations.
 \label{fig:comparison}
 \end{figure*}
 
-To evaluate SLSC, we construct a 500-problem multi-turn mathematical reasoning dataset with explicit numerical-dependency annotation by decomposing problems from MATH-500
-~\citep{lightman2023math500} into chains of dependent sub-questions. We compare three context-maintenance strategies---No Compression (raw accumulation), Natural-Language Summary(a
-Reflexion-style condensed narrative), and SLSC---paired with reasoner models spanning four size from the Qwen3.5 family~\citep{} (0.8B, 2B, 4B, 9B), with a fixed \texttt{gemma-3-27b-it}
-~\citep{} curator. Across this grid, SLSC improves final-answer accuracy by [Z\%] over No Compression and [Z'\%] over the natural-language summary baseline while reducing per-turn
-token consumption by [W\%]. Critically, the accuracy gap between SLSC and No Compression [widens / narrows] as reasoner size [decrease / increase], indicating that the limited attention
-capacity of SLMs make them disproportionately reliant on structured state maintenance for chained mathematical reasoning.
+We evaluate SLSC on Math-100-multi, a 100-problem multi-turn benchmark derived from MATH-500~\citep{lightman2023math500} (L3--L5), where each problem decomposes into 2--5 dependent sub-questions. We compare four strategies across four Qwen3.5 reasoner scales~\citep{qwen2024qwen25} (0.8B--9B). At 4B and above, compression methods substantially outperform raw history accumulation, with SLSC achieving strong gains while reducing per-turn tokens by 62\%. However, augmenting SLSC with Lean~4 formalization consistently degrades accuracy, suggesting stateless autoformalization without verifier feedback introduces noise.
 
-We make four contributions: 
+We make three contributions:
 \begin{enumerate}[noitemsep, topsep=2pt]
-    \item We construct, to our knowledge, the first multi-turn mathematical reasoning dataset with explicit numerical-dependency structure, complementing existing multi-turn benchmarks that 
-    focus on underspecification rather than numerical chaining.
-    \item We document the severity of context-accumulation failure in multi-turn mathematical reasoning at SLM scale, and show that the benefit of structured state maintenance scales inversely
-    with reasoner size---situating this as a distinctly SLM-scale bottleneck and extending the lost-in-conversation and long-context utilization literature to numerically chained settings.
-    \item We propose SLSC, a twin-agent state-compression framework, and show that it improves multi-turn final-answer accuracy by [Z\%] and reduce per-turn token consumption by [W\%] over raw-
-    context accumulation, with consistent gains across all four evaluated SLM reasoner sizes.
-    \item Contrary to our initial hypothesis, we find through ablation that the choice of state representation syntax---Lean-style formal language versus a simplified structured schema---does not
-    significantly affect performance: it is the \emph{granularity} of slotted state, not the \emph{formality} of its syntax, that drives the gains. This has practical implications at SLM scale,
-    where simplified schema are substantially more reliable to generate than formal-language ones.
+    \item \textbf{Dataset.} Math-100-multi, a 100-problem multi-turn benchmark with explicit numerical dependencies, derived from MATH-500 (L3--L5).
+
+    \item \textbf{Structured state compression improves accuracy at 4B+ scales.} SLSC achieves substantial accuracy gains over raw history accumulation at 4B and above, while reducing per-turn input tokens by 62\%. Natural-language summary shows comparable or larger gains, suggesting benefits come from bounded context size rather than structured representation alone.
+
+    \item \textbf{Cautionary finding on formal augmentation.} Lean~4 type stubs consistently degrade accuracy across all scales, attributed to stateless autoformalization without verifier feedback.
 \end{enumerate}

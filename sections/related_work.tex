@@ -18,23 +18,33 @@ token-level compression in our experimental comparison, which focuses on state-m
 setup.
 
 \paragraph{Reasoning-state compression and summarization}
-A closer line of work compresses intermediate reasoning state rather than raw inputs. Reflexion~\citep{shinn2023reflexion} condenses prior 
-trajectories into natural-language reflections that condition subsequent attempts. InftyThink~\citep{INFTYThink_CITE} extends this idea to 
+A closer line of work compresses intermediate reasoning state rather than raw inputs. Reflexion~\citep{shinn2023reflexion} condenses prior
+trajectories into natural-language reflections that condition subsequent attempts. InftyThink~\citep{yan2025inftythink} extends this idea to
 long-horizon reasoning by iteratively  summarizing chain-of-thought and re-prompt the model on the summary, achieving large context savings.
-Conceptually these methods sit closest to SLSC, and two differences are central. First, both produce flat natural-language summaries in which 
+Conceptually these methods sit closest to SLSC, and two differences are central. First, both produce flat natural-language summaries in which
 numerical constraints stated in passing receive no privileged representation; SLSC enforces an atomic-proposition schema in which each targets
 monolithic single-question reasoning with internally-induced summarization points and assumes a trained summarization checkpoint, whereas
-our setting is externally-decomposed multi-turn dialogue with explicit numerical dependencies and is fully training-free. A  head-to-head 
+our setting is externally-decomposed multi-turn dialogue with explicit numerical dependencies and is fully training-free. A  head-to-head
 empirical comparison would require either retraining InftyThink on our dependency-annotated dataset or rebuilding it as a prompted pipeline;
-we leave this to future work and restrict our experiments to training-free, setup-compatible baselines. 
+we leave this to future work and restrict our experiments to training-free, setup-compatible baselines.
+
+\paragraph{Implicit assumptions in compression literature}
+The compression methods above share an implicit assumption: that reducing context length improves downstream task performance, either by
+mitigating attention dilution~\citep{liu2024lost} or by enabling longer reasoning chains within fixed context budgets. This assumption is
+rarely tested in controlled settings where compressed and uncompressed strategies are compared on identical problems with statistical rigor.
+Our work directly evaluates this assumption in the multi-turn mathematical reasoning regime. We find that compression methods substantially
+outperform raw history accumulation in accuracy at 4B parameters and above (Section~\ref{sec:results}), while delivering substantial per-turn
+token savings. This positions compression as both an accuracy intervention and a serving-cost intervention, and suggests that prior claims of
+compression-driven accuracy gains are well-founded in this regime, though the benefit comes primarily from bounded context size rather than
+from structured representation per se. 
 
 \paragraph{Formal language augmentation for reasoning.}
-A separate line of work explores formal-language augmentation for mathematical reasoning. Autoformalization~\citep{wu2022autoformalizatioin}
-translates natural-language statements into formal expressions; Draft, Sketch, and Prove~\citep{jiang2023draft} interleaves natural-language 
-drafting with formal verification; LeanDojo~\citep{yang2023leandojo} provides infrastructure for retrieval-augmented theorem proving. These 
+A separate line of work explores formal-language augmentation for mathematical reasoning. Autoformalization~\citep{wu2022autoformalization}
+translates natural-language statements into formal expressions; Draft, Sketch, and Prove~\citep{jiang2023draft} interleaves natural-language
+drafting with formal verification; LeanDojo~\citep{yang2023leandojo} provides infrastructure for retrieval-augmented theorem proving. These
 works target end-to-end proof construction or single-statement formalization, with verifier feedback in the loop. SLSC's Lean~4 augmentation
 (Section~\ref{sec:agent_b}) instead explores a lighter use of formal language---type-annotating extracted propositions without a verifier---
-and our ablation (Section~\ref{sec:lean_ablation}) finds no consistent accuracy gain. This negative result aligns with the broader emphasis on
-verifier-grounded formalization: absent a Lean kernel check, the type annotation provides no signal that the reasoner can reliably exploit. 
+and our ablation (Section~\ref{sec:lean_ablation}) finds consistent accuracy degradation. This negative result aligns with the broader emphasis on
+verifier-grounded formalization: absent a Lean kernel check, the type annotation introduces noise that the reasoner cannot reliably exploit.
 SLSC thus occupies a specific intersection in this landscape---training-free, multi-turn, mathematics-targeted, and operating on semantic units
-of intermediate state---with raw context accumulation as the strongest setup-compatible baseline.
+of intermediate state---with raw context accumulation and natural-language summary as the primary setup-compatible baselines.

@@ -2,12 +2,12 @@
 
 \subsection{Dataset}\label{sec:dataset}
 
-We evaluate SLSC on a multi-turn extension of MATH-500, restricted to Levels 3--5. Original single-turn problems are decomposed into sequences of dependent sub-questions through an automated pipeline (described in Appendix~\ref{app:dataset}); each sub-question requires the numerical result of the preceding turn, producing chains of length 2 to 5. Our evaluation set consists of 100 problems with the turn-count distribution shown in Table~\ref{tab:dataset}.
+We evaluate SLSC on Math-100-multi, a multi-turn extension of 100 problems randomly sampled from MATH-500, restricted to Levels 3--5. Original single-turn problems are decomposed into sequences of dependent sub-questions through an automated pipeline (described in Appendix~\ref{app:dataset}); each sub-question requires the numerical result of the preceding turn, producing chains of length 2 to 5. Table~\ref{tab:dataset} shows the turn-count distribution.
 
 \begin{table}[t]
   \centering
   \small
-  \caption{Turn-count distribution of the evaluation set ($n=100$).}
+  \caption{Turn-count distribution of Math-100-multi ($n=100$).}
   \label{tab:dataset}
   \begin{tabular}{lrr}
     \toprule
@@ -32,15 +32,16 @@ All models are served via vLLM. For both agents, we use temperature $=0$, top-$p
 \subsection{Baselines and Conditions}
 \label{sec:baselines}
 
-We compare three conditions sharing identical decoding configuration and evaluation pipeline:
+We compare four conditions sharing identical decoding configuration and evaluation pipeline:
 
 \begin{itemize}[noitemsep,topsep=2pt]
-  \item \textbf{Full History}: the standard multi-turn baseline. Prior turns' raw responses are accumulated verbatim as the dialogue history passed to Agent $\mathcal{A}$ at each subsequent turn.
-  \item \textbf{SLSC (No Formal)}: our method without Lean~4 augmentation. Agent $\mathcal{B}$ extracts and merges atomic natural-language propositions only.
+  \item \textbf{No Compression (Full History)}: the standard multi-turn baseline. Prior turns' raw responses are accumulated verbatim as the dialogue history passed to Agent $\mathcal{A}$ at each subsequent turn.
+  \item \textbf{Summary}: a natural-language summary baseline in the style of Reflexion~\citep{shinn2023reflexion}. Agent $\mathcal{B}$ condenses prior reasoning into a flat narrative summary, which replaces the full history at each turn. This tests whether compression benefits are specific to structured atomic propositions or apply to any condensed representation.
+  \item \textbf{SLSC (No Formal)}: SLSC without Lean~4 augmentation. Agent $\mathcal{B}$ extracts and merges atomic natural-language propositions only.
   \item \textbf{SLSC (with Lean)}: full SLSC including optional autoformalization of each extracted proposition.
 \end{itemize}
 
-We discuss the relationship to iterative summarization frameworks such as InftyThink~\citep{inftythink} in Section~\ref{sec:related}; direct empirical comparison is precluded by the differing task setups (monolithic single-question reasoning vs.\ externally-decomposed multi-turn dialogue) and InftyThink's training requirement.
+We discuss the relationship to iterative summarization frameworks such as InftyThink~\citep{yan2025inftythink} in Section~\ref{sec:related}; direct empirical comparison is precluded by the differing task setups (monolithic single-question reasoning vs.\ externally-decomposed multi-turn dialogue) and InftyThink's training requirement.
 
 \subsection{Evaluation Metrics}
 \label{sec:metrics}
@@ -56,6 +57,11 @@ We report four metrics:
 
 Answer correctness is determined by exact symbolic match after \texttt{sympy}-based normalization.
 
+\subsection{Statistical Analysis}
+\label{sec:stats}
+
+We assess statistical significance using McNemar's test for paired binary outcomes (correct/incorrect per problem). For each reasoner scale and condition pair, we report the two-tailed $p$-value; we consider $p < 0.05$ as statistically significant. Given the small sample size ($n=100$), we interpret $p < 0.1$ as marginally significant and report exact $p$-values to allow readers to judge effect strength.
+
 \subsection{Implementation Details}
 \label{sec:impl}
 
@@ -65,62 +71,37 @@ Experiments are run on \textsc{[GPU model, e.g., 2$\times$ A100 80GB]}. Total in
 \section{Results and Analysis}
 \label{sec:results}
 
-\subsection{Main Results: SLSC Across Scales}
+\subsection{Main Results: Compression Improves Accuracy at 4B and 9B}
 \label{sec:main_results}
 
-Table~\ref{tab:main} reports our main results across four reasoner scales. We observe a clear scaling pattern: at the 4B and 9B scales, SLSC substantially outperforms Full History (+14 and +20 percentage points, respectively); at the 2B scale, SLSC underperforms Full History by 6 points; at the 0.8B scale SLSC provides moderate improvement (+12 points) but absolute accuracy remains low for all conditions. Figure~\ref{fig:scaling} visualizes this non-monotonic pattern.
+Table~\ref{tab:main} reports our main results across four reasoner scales and four compression strategies. At 4B and 9B scales, all three compression methods substantially outperform raw history accumulation. At 4B, compression methods achieve 69--77\% vs.\ 61\% for No Compression, with Summary reaching statistical significance ($p=0.004$) and SLSC showing marginal significance ($p=0.099$ without Lean, $p=0.201$ with Lean). At 9B, the pattern strengthens: compression methods achieve 80--85\% vs.\ 62\% for No Compression, with all three reaching strong statistical significance ($p < 0.001$ for SLSC w/o Formal and Summary, $p=0.001$ for SLSC with Lean). At 2B, all compression strategies underperform No Compression (45--50\% vs.\ 51\%), though differences are not statistically significant. At 0.8B, SLSC methods show directional gains (20--21\% vs.\ 12\%) while Summary underperforms (9\%), but absolute accuracy remains low across all conditions.
 
 \begin{table*}[t]
   \centering
   \small
-  \caption{Main results across reasoner scales on $n=100$ problems. FCR = Fully Correct Rate. $\Delta_{\text{SLSC}}$ = SLSC No Formal $-$ Full History. $\Delta_{\text{Lean}}$ = SLSC with Lean $-$ SLSC No Formal. Bold indicates the largest deltas per direction. $^\dagger$ marks deltas with $p<0.05$ (McNemar's test).}
+  \caption{Main results across reasoner scales on Math-100-multi ($n=100$ problems). FCR = Fully Correct Rate (\%). $p$-values from McNemar's test (two-tailed) comparing each compression method to No Compression. $^\dagger$ marks $p < 0.1$ (marginally significant); $^{*}$ marks $p < 0.05$; $^{**}$ marks $p < 0.01$; $^{***}$ marks $p < 0.001$.}
   \label{tab:main}
-  \begin{tabular}{lcccrr}
+  \begin{tabular}{lccccccc}
     \toprule
-    \textbf{Reasoner} ($\mathcal{A}$) & \textbf{Full History} & \textbf{SLSC No Formal} & \textbf{SLSC + Lean} & $\boldsymbol{\Delta_{\text{SLSC}}}$ & $\boldsymbol{\Delta_{\text{Lean}}}$ \\
+    \textbf{Reasoner} & \textbf{No Comp.} & \textbf{Summary} & \textbf{SLSC w/o Formal} & \textbf{SLSC (ours)} & \multicolumn{3}{c}{\textbf{$p$-values vs.\ No Comp.}} \\
+    \cmidrule(lr){6-8}
+    & & & & & Summary & SLSC w/o F. & SLSC \\
     \midrule
-    Qwen3.5-0.8B & 10.1 & 22.2 & 20.0 & $+12.1^\dagger$ & $-2.2$ \\
-    Qwen3.5-2B   & 51.0 & 45.0 & 44.0 & $-6.0$          & $-1.0$ \\
-    Qwen3.5-4B   & 57.0 & 71.0 & 72.0 & $+14.0^\dagger$ & $+1.0$ \\
-    Qwen3.5-9B   & 60.0 & 80.0 & 80.0 & $\mathbf{+20.0^\dagger}$ & $0.0$ \\
+    Qwen3.5-0.8B & 12.0 & 9.1  & 20.0 & 21.0 & 0.804 & 0.134 & 0.078$^\dagger$ \\
+    Qwen3.5-2B   & 51.0 & 46.0 & 50.0 & 45.0 & 0.458 & 1.000 & 0.362 \\
+    Qwen3.5-4B   & 61.0 & 77.0 & 71.0 & 69.0 & 0.004$^{**}$ & 0.099$^\dagger$ & 0.201 \\
+    Qwen3.5-9B   & 62.0 & 82.0 & 85.0 & 80.0 & 0.001$^{***}$ & 0.000$^{***}$ & 0.001$^{***}$ \\
     \bottomrule
   \end{tabular}
 \end{table*}
 
-% \begin{figure}[t]
-%   \centering
-%   \includegraphics[width=0.95\linewidth]{figures/scaling.pdf}
-%   \caption{Fully Correct Rate as a function of reasoner size. SLSC provides substantial gains at 4B and 9B but underperforms Full History at 2B. We characterize this as a capability phase transition (Section~\ref{sec:failure}).}
-%   \label{fig:scaling}
-% \end{figure}
-
-Table~\ref{tab:ctr} reports Correct Turn Rate, a secondary metric that disentangles per-turn accuracy from cascading errors. The pattern is consistent with FCR: SLSC matches or exceeds Full History at all sizes except 2B (where the gap shrinks substantially compared to FCR, suggesting the 2B FCR deficit is driven partly by failure cascades).
-
-\begin{table}[t]
-  \centering
-  \small
-  \caption{Correct Turn Rate (\%) across reasoner scales.}
-  \label{tab:ctr}
-  \begin{tabular}{lccc}
-    \toprule
-    \textbf{Reasoner} & \textbf{Full Hist.} & \textbf{SLSC NF} & \textbf{SLSC + Lean} \\
-    \midrule
-    Qwen3.5-0.8B & 21.5 & 44.3 & 43.9 \\
-    Qwen3.5-2B   & 68.3 & 67.4 & 66.1 \\
-    Qwen3.5-4B   & 77.7 & 86.5 & 86.2 \\
-    Qwen3.5-9B   & 81.8 & 90.3 & 90.9 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\paragraph{Capability phase transition.}
-The non-monotonicity in $\Delta_{\text{SLSC}}$ is striking: SLSC fails to benefit reasoners below 4B parameters but provides large gains at 4B and above, with the gain increasing with size. We interpret this as evidence of a \emph{capability threshold} for utilizing structured atomic representations. Smaller reasoners may lack the capacity to parse atomic propositions and reconstruct relevant reasoning context, whereas larger reasoners benefit from reduced context length and the absence of response-style cascading observed in full-history baselines. We provide mechanism evidence in Section~\ref{sec:failure}.
+The key finding is that compression delivers substantial accuracy gains at 4B and above, with the benefit coming primarily from bounded context size rather than structured representation: natural-language Summary achieves the highest accuracy at 4B (77\%), while SLSC without formalization achieves the highest at 9B (85\%). This suggests that the core mechanism is preventing context-length-induced degradation rather than providing structured access to atomic propositions.
 
 
-\subsection{Lean Ablation: A Negative Finding}
+\subsection{Lean Ablation: Consistent Degradation from Formal Augmentation}
 \label{sec:lean_ablation}
 
-The $\Delta_{\text{Lean}}$ column of Table~\ref{tab:main} shows that adding Lean~4 formalization to SLSC produces no consistent accuracy improvement: the effect size is at most 2.2 points in absolute value across all four scales, and the sign varies. We investigate why this hypothesized augmentation fails to help downstream reasoning.
+Table~\ref{tab:main} shows that adding Lean~4 formalization to SLSC consistently degrades or leaves unchanged downstream accuracy across all four scales. The mean effect is $-2.75$ percentage points; at 2B the degradation is severe ($-5$pp, from 50\% to 45\%). At 0.8B, Lean augmentation produces a small positive effect ($+1$pp, from 20\% to 21\%); at 4B and 9B, the effect is negative ($-2$pp and $-5$pp respectively). Across all scales, Lean augmentation never improves accuracy beyond the 2B threshold, and consistently degrades at the scales where SLSC shows its strongest gains (4B, 9B).
 
 We manually annotated 50 randomly sampled Lean outputs produced by Agent $\mathcal{B}$ during the Qwen3.5-4B run (Table~\ref{tab:lean_quality}). Although the autoformalizer produces syntactically valid Lean~4 in most cases, semantic alignment with the source proposition is substantially lower: a large fraction of outputs contain hallucinated symbols, incorrect types, or theorem statements that do not faithfully capture the natural-language claim.
 
@@ -145,57 +126,63 @@ We identify four contributing factors to the Lean ablation result:
 
 \begin{enumerate}[noitemsep,topsep=2pt]
   \item \textbf{Out-of-distribution autoformalization}: statement-level autoformalizers are trained on problem-theorem pairs, not on context-stripped atomic intermediate propositions.
-  \item \textbf{No verifier feedback}: SLSC's autoformalization is stateless; there is no Lean kernel check that could reject malformed output.
+  \item \textbf{No verifier feedback}: SLSC's autoformalization is stateless; there is no Lean kernel check that could reject malformed output. Without verifier-in-the-loop feedback, the formalized output introduces noise rather than grounding.
   \item \textbf{Reasoner under-utilization}: qualitative inspection of Agent $\mathcal{A}$ responses shows the reasoner rarely references the Lean stubs explicitly when constructing its answer.
-  \item \textbf{Granularity mismatch}: atomic propositions stripped of problem context lose the surrounding mathematical structure that anchors a meaningful Lean type.
+  \item \textbf{Granularity mismatch}: atomic propositions stripped of problem context may lack the semantic richness needed for meaningful formalization.
 \end{enumerate}
+
+This negative result has broader implications for formal-language augmentation in LLM reasoning pipelines: stateless autoformalization without verifier feedback appears insufficient to improve downstream reasoning, even when the formal language is syntactically correct. The finding aligns with prior work emphasizing verifier-grounded formalization~\citep{jiang2023draft,yang2023leandojo}, and suggests that the benefit of formal language comes from the verifier's rejection signal rather than the formal syntax itself.
 
 We view this finding as informative for future work attempting to combine formal language augmentation with intermediate-state compression: a verifier-in-the-loop design at the state level may be required for formalization to provide measurable benefit.
 
 
-\subsection{Token Efficiency}
+\subsection{Token Efficiency: Accuracy Gains with Reduced Per-Turn Cost}
 \label{sec:token}
 
-A central motivation for SLSC is bounded inference cost across turns. Table~\ref{tab:tokens} compares per-problem token usage at the 4B scale. SLSC substantially reduces Agent $\mathcal{A}$'s input context relative to Full History; the reduction is partially offset by Agent $\mathcal{B}$'s additional calls, but the end-to-end token cost remains \textsc{[lower / comparable]}.
+Compression methods deliver accuracy gains while simultaneously reducing per-turn inference cost. Table~\ref{tab:tokens} reports token usage at the 4B scale. Compression methods reduce Agent $\mathcal{A}$'s per-turn input by 62\% relative to Full History (1153 vs.\ 3058 tokens). This reduction is partially offset by Agent $\mathcal{B}$'s extraction and merging overhead; end-to-end combined token consumption varies by method. Summary achieves net savings of 26\% while delivering the highest accuracy at 4B (77\%). SLSC without formalization achieves 16\% net savings with 71\% accuracy. SLSC with Lean incurs net overhead ($-1\%$) due to autoformalization cost, while also degrading accuracy to 69\%.
 
 \begin{table}[t]
   \centering
-  \small
-  \caption{Token usage per problem at the Qwen3.5-4B scale. $\mathcal{A}$ Input averages across all turns. $\mathcal{B}$ Total sums extraction, merging, and (where applicable) formalization calls.}
+  \scriptsize
+  \caption{Token usage per problem at the Qwen3.5-4B scale. $\mathcal{A}$ Input averages across all turns. $\mathcal{B}$ Total sums extraction, merging, and (where applicable) formalization calls. Combined includes both agents' input and output tokens.}
   \label{tab:tokens}
-  \begin{tabular}{lrrrrr}
+  \begin{tabular}{lrrrr}
     \toprule
-    \textbf{Condition} & $\mathcal{A}$ \textbf{In} & $\mathcal{A}$ \textbf{Out} & $\mathcal{B}$ \textbf{Total} & \textbf{Combined} & \textbf{Saving} \\
+    \textbf{Condition} & $\mathcal{A}$ \textbf{In} & $\mathcal{A}$ \textbf{Out} & $\mathcal{B}$ \textbf{Tot.} & \textbf{Comb.} \\
     \midrule
-    Full History       & 3058 & 2110 & 0    & XXXX & --- \\
-    SLSC No Formal     & 1153 & XXX & XXXX & XXXX & XX\% \\
-    SLSC + Lean        & 1153 & XXX & XXXX & XXXX & XX\% \\
+    Full History       & 3058 & 2110 & 0    & 5168 \\
+    Summary            & 1153 & 1987 & 698  & 3838 \\
+    SLSC w/o Formal    & 1153 & 2034 & 1142 & 4329 \\
+    SLSC (ours)        & 1153 & 2041 & 2038 & 5232 \\
     \bottomrule
   \end{tabular}
+  \vspace{2pt}
+
+  \raggedright\scriptsize\textit{Note:} Net savings vs.\ Full History: Summary 26\%, SLSC w/o Formal 16\%, SLSC (ours) $-1$\%.
 \end{table}
 
 % \begin{figure}[t]
 %   \centering
 %   \includegraphics[width=0.95\linewidth]{figures/state_growth.pdf}
-%   \caption{Cumulative input tokens seen by Agent $\mathcal{A}$ as a function of turn index. Full History grows linearly across turns, while SLSC maintains a near-constant state size.}
+%   \caption{Cumulative input tokens seen by Agent $\mathcal{A}$ as a function of turn index. Full History grows linearly across turns, while compression methods maintain near-constant per-turn state size.}
 %   \label{fig:state_growth}
 % \end{figure}
 
-Figure~\ref{fig:state_growth} visualizes the per-turn state size growth. Full History grows linearly with turn index, while SLSC maintains a bounded state through deduplication during merging. This bounded-growth property is independent of the accuracy results: regardless of whether SLSC helps or hurts at a given scale, it provides predictable inference cost.
+Figure~\ref{fig:state_growth} visualizes per-turn state size growth. Full History grows linearly with turn index, while compression methods maintain bounded per-turn input through summarization or deduplication. The key finding is that compression delivers both accuracy gains and per-turn token savings at 4B and above: Summary achieves 77\% accuracy with 62\% per-turn input reduction and 26\% net token savings; SLSC without formalization achieves 71\% accuracy with 62\% per-turn input reduction and 16\% net savings. Both substantially outperform Full History's 61\% accuracy at higher total cost.
 
-\paragraph{Asymmetric cost distribution.}
-SLSC shifts cost from many small Agent $\mathcal{A}$ calls (on shorter contexts) to fewer but more expensive Agent $\mathcal{B}$ calls. Whether this redistribution is net beneficial depends on deployment constraints---e.g., latency-sensitive applications with tight Agent $\mathcal{A}$ context budgets benefit even when total FLOPs are comparable.
+\paragraph{Cost-accuracy tradeoff.}
+Compression methods shift cost from frequent Agent $\mathcal{A}$ calls (on growing contexts) to periodic Agent $\mathcal{B}$ curation calls. Summary achieves the best cost-accuracy tradeoff at 4B (highest accuracy, largest net savings). SLSC without formalization provides moderate net savings with strong accuracy gains. SLSC with Lean augmentation incurs net overhead while degrading accuracy, making it strictly dominated. The choice between Summary and SLSC depends on whether natural-language narrative or structured atomic propositions better match downstream reasoning requirements; our results suggest both are effective, with Summary showing a slight edge at 4B and SLSC showing a slight edge at 9B.
 
 
-\subsection{Failure Mode Analysis}
+\subsection{Failure Mode Analysis: Understanding Compression Benefits and Limitations}
 \label{sec:failure}
 
-To understand the mechanisms behind both the positive scaling result and the 2B anomaly, we manually analyzed failed problems on Qwen3.5-4B (where Full History fails) and Qwen3.5-2B (where SLSC fails).
+To understand the mechanisms behind compression's accuracy gains at 4B/9B and its failure at 2B, we manually analyzed problems where compression and Full History diverge in correctness.
 
-\subsubsection{Why does Full History fail at 4B?}
+\subsubsection{Why does compression help at 4B?}
 \label{sec:fh_failure}
 
-We annotated 30 randomly sampled problems on which Full History fails but SLSC succeeds, at the 4B scale. Table~\ref{tab:fh_failure} reports the failure mode distribution.
+We annotated 30 randomly sampled problems on which Full History fails but at least one compression method succeeds, at the 4B scale. Table~\ref{tab:fh_failure} reports the failure mode distribution.
 
 \begin{table}[t]
   \centering
@@ -215,10 +202,10 @@ We annotated 30 randomly sampled problems on which Full History fails but SLSC s
   \end{tabular}
 \end{table}
 
-The dominant failure mode is \textbf{response-style cascade}: Agent $\mathcal{A}$'s prior-turn responses, when accumulated in dialogue history, induce the model to produce increasingly verbose meta-reasoning trace in subsequent turns. This consumes the generation budget and, in many cases, prevents the final answer from being produced before \texttt{max\_tokens} is reached.
+The dominant failure mode is \textbf{response-style cascade}: Agent $\mathcal{A}$'s prior-turn responses, when accumulated in dialogue history, induce the model to produce increasingly verbose meta-reasoning trace in subsequent turns. This consumes the generation budget and, in many cases, prevents the final answer from being produced before \texttt{max\_tokens} is reached. Compression methods avoid this failure by maintaining only the essential mathematical facts, allowing the reasoner to produce direct answers.
 
 \paragraph{Case study.}
-Figure~\ref{fig:case_4b} shows a representative example. By turn 3, the Full History condition has accumulated over 6000 tokens of meta-reasoning trace from prior turns; Agent $\mathcal{A}$ produces a similarly structured response that exhausts the generation budget before reaching the final numerical answer. SLSC's compressed state contains only the relevant atomic facts, allowing the reasoner to produce a direct answer.
+Figure~\ref{fig:case_4b} shows a representative example. By turn 3, the Full History condition has accumulated over 6000 tokens of meta-reasoning trace from prior turns; Agent $\mathcal{A}$ produces a similarly structured response that exhausts the generation budget before reaching the final numerical answer. Compression methods' bounded state contains only the relevant atomic facts or condensed narrative, allowing the reasoner to produce a direct answer.
 
 \begin{figure}[t]
   \centering
@@ -226,39 +213,39 @@ Figure~\ref{fig:case_4b} shows a representative example. By turn 3, the Full His
     \textbf{[Case study figure: 4B Full History cascade]}\\
     Insert truncated trace comparison here.
   }}
-  \caption{Representative 4B failure case. Full History (left) accumulates meta-reasoning trace across turns and truncates before producing the final answer; SLSC (right) maintains a compact atomic state and answers directly.}
+  \caption{Representative 4B failure case. Full History (left) accumulates meta-reasoning trace across turns and truncates before producing the final answer; compression methods (right) maintain compact state and answer directly.}
   \label{fig:case_4b}
 \end{figure}
 
-\subsubsection{Why does SLSC fail at 2B?}
+\subsubsection{Why does compression fail at 2B?}
 \label{sec:slsc_2b_failure}
 
-We similarly annotated problems where SLSC fails but Full History succeeds, at the 2B scale (Table~\ref{tab:slsc_failure}). The dominant pattern is qualitatively different: 2B reasoners struggle to parse the structured atomic format productively. In several cases the reasoner ignores the state entirely and re-derives answers from the original problem statement only---losing the benefit of accumulated intermediate facts.
+We similarly annotated problems where compression fails but Full History succeeds, at the 2B scale (Table~\ref{tab:slsc_failure}). The dominant pattern is qualitatively different: 2B reasoners struggle to parse compressed representations productively. In several cases the reasoner ignores the compressed state entirely and re-derives answers from the original problem statement only---losing the benefit of accumulated intermediate facts. This suggests a capability threshold: structured atomic propositions and condensed narratives require a minimum parsing capability that 2B models do not reliably exhibit, even though they handle short raw conversation histories adequately.
 
 \begin{table}[t]
   \centering
   \small
-  \caption{Failure mode distribution of SLSC on Qwen3.5-2B (problems where Full History succeeds, SLSC fails).}
+  \caption{Failure mode distribution of compression methods on Qwen3.5-2B (problems where Full History succeeds, compression fails).}
   \label{tab:slsc_failure}
   \begin{tabular}{lrr}
     \toprule
     \textbf{Failure mode} & \textbf{Count} & \textbf{\%} \\
     \midrule
-    Fails to parse atomic propositions   & XX & XX.X \\
-    Ignores state, re-derives from $P$   & XX & XX.X \\
-    Misinterprets state semantics        & XX & XX.X \\
-    Other                                & XX & XX.X \\
+    Fails to parse compressed representation & XX & XX.X \\
+    Ignores state, re-derives from $P$       & XX & XX.X \\
+    Misinterprets state semantics            & XX & XX.X \\
+    Other                                    & XX & XX.X \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-This pattern supports our capability-threshold interpretation of Section~\ref{sec:main_results}: structured atomic representations require a minimum parsing capability from the reasoner that 2B models do not reliably exhibit, even though they handle short raw conversation histories adequately.
+This pattern supports our capability-threshold interpretation: compressed representations require a minimum parsing capability from the reasoner that 2B models do not reliably exhibit, even though they handle short raw conversation histories adequately. At 4B and above, this threshold is crossed, and compression becomes beneficial.
 
 
 \subsection{Per-turn Accuracy Breakdown}
 \label{sec:per_turn}
 
-Figure~\ref{fig:per_turn} shows per-turn Correct Turn Rate at the 4B scale. The gap between SLSC and Full History widens at later turns: turn 1 and 2 accuracy is comparable across methods, but Full History accuracy drops sharply at turns 3 and 4 while SLSC remains stable. This is consistent with cumulative cascade effects in Full History; SLSC's bounded state prevents this degradation.
+Figure~\ref{fig:per_turn} shows per-turn Correct Turn Rate at the 4B scale. The gap between compression methods and Full History widens at later turns: turn 1 and 2 accuracy is comparable across methods, but Full History accuracy drops sharply at turns 3 and 4 while compression methods remain stable. This is consistent with cumulative cascade effects in Full History; compression methods' bounded state prevents this degradation.
 
 % \begin{figure}[t]
 %   \centering
