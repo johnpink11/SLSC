@@ -489,3 +489,88 @@ Figure~\ref{fig:token_efficiency} plots accuracy against average total input tok
 \caption{Token efficiency scatter plot. Each point represents one model--condition pair. \textbf{Left}: Fully Correct Rate (\%) vs.\ average total input tokens (log scale). \textbf{Right}: Average score vs.\ average total input tokens (log scale). Points are colored by compression condition and shaped by model scale. Compression methods consistently achieve higher accuracy at lower token counts than No Compression.}
 \label{fig:token_efficiency}
 \end{figure*}
+
+%% ----------------------------------------------------------------
+\section{Method Details}
+\label{app:method_details}
+
+\subsection{Agent B Curation Algorithm}
+\label{app:curation_alg}
+
+\begin{algorithm}[h]
+\caption{Agent $\mathcal{B}$ Curation: extract atomic propositions from response, optionally formalize each, then merge into compressed state.}\label{alg:curation}
+\begin{algorithmic}[1]
+\Require $S_{t-1}$,\; $r_t$ \hfill \textit{(current state, Agent $\mathcal{A}$ response)}
+\Ensure $S_t$
+\State $\mathcal{P}_t \gets \textsc{Extract}(r_t)$
+    \Comment{LLM-based proposition extraction}
+\For{each $p \in \mathcal{P}_t$} \hfill \textit{(optional)}
+    \State $p.\mathtt{lean} \gets \textsc{Formalize}(p)$
+        \Comment{Autoformalize to Lean~4}
+\EndFor
+\State $S_t \gets \textsc{Merge}(S_{t-1},\; \mathcal{P}_t)$
+    \Comment{LLM-based deduplication and update}
+\State \Return $S_t$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{SLSC Multi-Turn Inference Algorithm}
+\label{app:inference_alg}
+
+\begin{algorithm}[h]
+\caption{SLSC Multi-Turn Inference: iterate over sub-questions, alternating Agent $\mathcal{A}$ reasoning and Agent $\mathcal{B}$ state curation, then extract the final answer.}
+\label{alg:inference}
+\begin{algorithmic}[1]
+\Require Problem $P$, sub-questions $\{q_1, \ldots, q_T\}$, agents $\mathcal{A}$, $\mathcal{B}$
+\Ensure Final answer
+\State $S_0 \gets \emptyset$
+    \Comment{empty initial state}
+\For{$t = 1$ \textbf{to} $T$}
+    \State $r_t \gets \mathcal{A}(P,\; S_{t-1},\; q_t)$
+        \Comment{Agent $\mathcal{A}$ reasons}
+    \State $S_t \gets \mathcal{B}(S_{t-1},\; r_t)$
+        \Comment{Agent $\mathcal{B}$ updates state}
+\EndFor
+\State \Return $\textsc{ExtractAnswer}(r_T)$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Extraction Example}
+\label{app:extraction_example}
+
+The following shows a representative extraction on a divisibility problem:
+
+\begin{mdframed}[frametitle={Extraction Example}, frametitlerule=true,
+    frametitlebackgroundcolor=gray!15, backgroundcolor=gray!5,
+    innertopmargin=6pt, innerbottommargin=6pt]
+\small
+\textbf{Input} (excerpt from $r_t$):
+\textit{``Since $d \mid n+7$ and $d \mid 2n+1$, we can compute $d \mid 2(n+7)-(2n+1) = 13$. Therefore $d$ must divide 13 \ldots''}
+
+\medskip
+\textbf{Extracted propositions} $\mathcal{P}_t$:
+\begin{enumerate}[noitemsep,topsep=2pt,label=\arabic*.]
+  \item $d$ divides $n + 7$
+  \item $d$ divides $2n + 1$
+  \item $2(n+7) - (2n+1) = 13$
+  \item $d$ divides $13$
+\end{enumerate}
+\end{mdframed}
+
+\subsection{State Representation Example}
+\label{app:state_example}
+
+The following shows a typical $S_t$ after three curation steps, with optional Lean~4 stubs:
+
+\begin{mdframed}[backgroundcolor=gray!5, innertopmargin=6pt, innerbottommargin=6pt]
+\small
+\textbf{[Known facts from prior steps]}\\[4pt]
+\texttt{1.} $d$ divides $n + 7$\\
+\quad\texttt{theorem prop1 : d | (n + 7) := by sorry}\\[3pt]
+\texttt{2.} $d$ divides $2n + 1$\\
+\quad\texttt{theorem prop2 : d | (2*n + 1) := by sorry}\\[3pt]
+\texttt{3.} $2(n+7) - (2n+1) = 13$\\
+\quad\texttt{theorem prop3 : 2*(n+7) - (2*n+1) = 13 := by sorry}\\[3pt]
+\texttt{4.} $d$ divides $13$\\
+\quad\texttt{theorem prop4 : d | 13 := by sorry}
+\end{mdframed}

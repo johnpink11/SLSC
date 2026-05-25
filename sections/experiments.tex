@@ -278,11 +278,11 @@ We similarly annotated 16 problems where compression fails but Full History succ
 \subsection{Per-turn Accuracy Breakdown}
 \label{sec:per_turn}
 
-Figure~\ref{fig:per_turn} shows per-turn Correct Turn Rate across all four Qwen3.5 scales. The capability threshold is clearly visible: at 0.8B and 2B, compression methods (especially SLSC with Lean) show sharp accuracy drops across turns, while Full History maintains relatively stable performance. At 4B and 9B, the pattern reverses: compression methods maintain stable accuracy across turns while Full History drops sharply at turns 3 and 4. This crossover supports our interpretation that compressed representations require a minimum reasoning capacity to parse and utilize effectively, and that above this threshold, compression prevents the cumulative cascade effects that degrade Full History performance.
-
-\begin{figure*}[t]
+\begin{figure*}[!t]
   \centering
   \includegraphics[width=0.95\linewidth]{figures/per_turn_by_mode.png}
   \caption{Per-turn Correct Turn Rate across all Qwen3.5 scales (0.8B, 2B, 4B, 9B). Sample sizes by turn: $n_1=n_2=100$, $n_3=87$, $n_4=30$, $n_5=3$. We omit turn 5 from analysis due to small sample. The capability threshold is evident: compression methods harm accuracy at 0.8B/2B but substantially improve it at 4B/9B, with the gap widening at later turns.}
   \label{fig:per_turn}
 \end{figure*}
+
+Figure~\ref{fig:per_turn} shows per-turn Correct Turn Rate across all four Qwen3.5 scales. The capability threshold is clearly visible: at 0.8B and 2B, compression methods (especially SLSC with Lean) show sharp accuracy drops across turns, while Full History maintains relatively stable performance. At 4B and 9B, the pattern reverses: compression methods maintain stable accuracy across turns while Full History drops sharply at turns 3 and 4. This crossover supports our interpretation that compressed representations require a minimum reasoning capacity to parse and utilize effectively, and that above this threshold, compression prevents the cumulative cascade effects that degrade Full History performance.
