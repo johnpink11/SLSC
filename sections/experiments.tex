@@ -2,26 +2,7 @@
 
 \subsection{Dataset}\label{sec:dataset}
 
-We evaluate SLSC on Math-100-multi, a multi-turn extension of 100 problems randomly sampled from MATH-500, restricted to Levels 3--5. Original single-turn problems are decomposed into sequences of dependent sub-questions through an automated pipeline (described in Appendix~\ref{app:dataset}); each sub-question requires the numerical result of the preceding turn, producing chains of length 2 to 5. Table~\ref{tab:dataset} shows the turn-count distribution.
-
-\begin{table}[t]
-  \centering
-  \small
-  \caption{Turn-count distribution of Math-100-multi ($n=100$).}
-  \label{tab:dataset}
-  \begin{tabular}{lrr}
-    \toprule
-    \textbf{Turn count} & \textbf{\# Problems} & \textbf{\%} \\
-    \midrule
-    2 turns & 13 & 13.0 \\
-    3 turns & 58 & 58.0 \\
-    4 turns & 26 & 26.0 \\
-    5 turns & 3  & 3.0 \\
-    \midrule
-    \textbf{Total} & \textbf{100} & \textbf{100.0} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+We evaluate SLSC on Math-100-multi, a multi-turn extension of 100 problems randomly sampled from MATH-500~\citep{lightman2023math500}, restricted to Levels 3--5. Original single-turn problems are decomposed into sequences of dependent sub-questions through an automated pipeline (described in Appendix~\ref{app:dataset}); each sub-question requires the numerical result of the preceding turn, producing chains of length 2 to 5. The dataset contains 13 two-turn problems, 58 three-turn problems, 26 four-turn problems, and 3 five-turn problems (average: 3.19 turns per problem). Full dataset statistics and decomposition methodology are provided in Appendix~\ref{app:dataset}.
 
 \subsection{Models}\label{sec:models}
 
@@ -65,7 +46,7 @@ We assess statistical significance using McNemar's test for paired binary outcom
 \subsection{Implementation Details}
 \label{sec:impl}
 
-Experiments are run on \textsc{[GPU model, e.g., 2$\times$ A100 80GB]}. Total inference time across all conditions and reasoner sizes is approximately \textsc{[XX hours]}. Code, prompts, and dataset construction scripts will be released upon publication.
+Code, prompts, and dataset construction scripts will be released upon publication. Detailed implementation specifications are provided in Appendix~\ref{app:implementation}.
 
 
 \section{Results and Analysis}
@@ -114,10 +95,10 @@ We manually annotated 50 randomly sampled Lean outputs produced by Agent $\mathc
     \toprule
     \textbf{Quality dimension} & \textbf{Count} & \textbf{\%} \\
     \midrule
-    Syntactically valid Lean~4         & XX & XX.X \\
-    Semantically aligned with NL       & XX & XX.X \\
-    Hallucinated symbols/types         & XX & XX.X \\
-    Successfully type-checks           & XX & XX.X \\
+    Syntactically valid Lean~4         & 12 & 24.0 \\
+    Semantically aligned with NL       & 50 & 100.0 \\
+    Hallucinated symbols/types         & 28 & 56.0 \\
+    Successfully type-checks           & 12 & 24.0 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -161,12 +142,12 @@ Compression methods deliver accuracy gains while simultaneously reducing per-tur
   \raggedright\scriptsize\textit{Note:} Net savings vs.\ Full History: Summary 26\%, SLSC w/o Formal 16\%, SLSC (ours) $-1$\%.
 \end{table}
 
-% \begin{figure}[t]
-%   \centering
-%   \includegraphics[width=0.95\linewidth]{figures/state_growth.pdf}
-%   \caption{Cumulative input tokens seen by Agent $\mathcal{A}$ as a function of turn index. Full History grows linearly across turns, while compression methods maintain near-constant per-turn state size.}
-%   \label{fig:state_growth}
-% \end{figure}
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/state_growth.png}
+  \caption{Cumulative input tokens seen by Agent $\mathcal{A}$ as a function of turn index across all Qwen3.5 scales (0.8B, 2B, 4B, 9B). Full History grows linearly across turns, while compression methods maintain near-constant per-turn state size.}
+  \label{fig:state_growth}
+\end{figure*}
 
 Figure~\ref{fig:state_growth} visualizes per-turn state size growth. Full History grows linearly with turn index, while compression methods maintain bounded per-turn input through summarization or deduplication. The key finding is that compression delivers both accuracy gains and per-turn token savings at 4B and above: Summary achieves 77\% accuracy with 62\% per-turn input reduction and 26\% net token savings; SLSC without formalization achieves 71\% accuracy with 62\% per-turn input reduction and 16\% net savings. Both substantially outperform Full History's 61\% accuracy at higher total cost.
 
@@ -182,74 +163,173 @@ To understand the mechanisms behind compression's accuracy gains at 4B/9B and it
 \subsubsection{Why does compression help at 4B?}
 \label{sec:fh_failure}
 
-We annotated 30 randomly sampled problems on which Full History fails but at least one compression method succeeds, at the 4B scale. Table~\ref{tab:fh_failure} reports the failure mode distribution.
+We annotated 31 problems on which Full History fails but at least one compression method achieves higher per-turn accuracy, at the 4B scale. Table~\ref{tab:fh_failure} reports the failure mode distribution.
 
 \begin{table}[t]
   \centering
   \small
-  \caption{Failure mode distribution of Full History on Qwen3.5-4B (30 problems where SLSC succeeds, Full History fails). Categories are not mutually exclusive; rows may sum to $>$100\%.}
+  \caption{Failure mode distribution of Full History on Qwen3.5-4B (31 problems where compression methods achieve higher per-turn accuracy). Categories are not mutually exclusive; rows may sum to $>$100\%.}
   \label{tab:fh_failure}
   \begin{tabular}{lrr}
     \toprule
     \textbf{Failure mode} & \textbf{Count} & \textbf{\%} \\
     \midrule
-    Response-style cascade & XX & XX.X \\
-    Answer truncation at max\_tokens & XX & XX.X \\
-    Numerical condition forgetting   & XX & XX.X \\
-    Logic error unrelated to context & XX & XX.X \\
-    Other                            & XX & XX.X \\
+    Response-style cascade & 7 & 22.6 \\
+    Answer truncation at \texttt{max\_tokens} & 23 & 74.2 \\
+    Numerical condition forgetting   & 1 & 3.2 \\
+    Logic error unrelated to context & 0 & 0.0 \\
+    Other                            & 0 & 0.0 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The dominant failure mode is \textbf{response-style cascade}: Agent $\mathcal{A}$'s prior-turn responses, when accumulated in dialogue history, induce the model to produce increasingly verbose meta-reasoning trace in subsequent turns. This consumes the generation budget and, in many cases, prevents the final answer from being produced before \texttt{max\_tokens} is reached. Compression methods avoid this failure by maintaining only the essential mathematical facts, allowing the reasoner to produce direct answers.
+The dominant failure mode is \textbf{answer truncation at \texttt{max\_tokens}} (74\%): Full History accumulates verbatim prior turns, which inflates the input context and forces the model to use more tokens to re-read prior work before generating; combined with the 1024-token per-turn output cap, the model runs out of space mid-derivation. A secondary pattern is \textbf{response-style cascade} (23\%): Agent $\mathcal{A}$'s prior-turn responses, when accumulated in dialogue history, induce the model to produce increasingly verbose meta-reasoning trace in subsequent turns. Compression methods avoid both failures by maintaining only the essential mathematical facts, allowing the reasoner to produce direct answers within the token budget.
 
 \paragraph{Case study.}
-Figure~\ref{fig:case_4b} shows a representative example. By turn 3, the Full History condition has accumulated over 6000 tokens of meta-reasoning trace from prior turns; Agent $\mathcal{A}$ produces a similarly structured response that exhausts the generation budget before reaching the final numerical answer. Compression methods' bounded state contains only the relevant atomic facts or condensed narrative, allowing the reasoner to produce a direct answer.
+Figure~\ref{fig:case_4b} shows a representative example. By turn 4, the Full History condition has accumulated 1681 tokens of input context from prior turns; Agent $\mathcal{A}$ produces a verbose checklist-style response that exhausts the 1024-token generation budget before reaching the final numerical answer. In contrast, SLSC maintains only 229 tokens of compressed state, allowing the reasoner to produce a direct derivation and correct answer within the token limit.
 
-\begin{figure}[t]
+\begin{figure*}[t]
   \centering
-  \fbox{\parbox{0.92\linewidth}{\small
-    \textbf{[Case study figure: 4B Full History cascade]}\\
-    Insert truncated trace comparison here.
-  }}
-  \caption{Representative 4B failure case. Full History (left) accumulates meta-reasoning trace across turns and truncates before producing the final answer; compression methods (right) maintain compact state and answer directly.}
+  \scriptsize
+
+  % Left: Full History (Failure)
+  \begin{minipage}[t]{0.48\textwidth}
+    \begin{mdframed}[
+      frametitle={\textbf{Full History (Qwen3.5-4B) -- Failure}},
+      frametitlerule=true,
+      frametitlebackgroundcolor=red!15,
+      backgroundcolor=red!3,
+      linecolor=red!60,
+      linewidth=1pt,
+      innertopmargin=6pt,
+      innerbottommargin=6pt
+    ]
+    \textcolor{gray}{\textbf{Problem:}} Find largest integer $<2010$ with remainder 5 (mod 7), 10 (mod 11), 10 (mod 13).
+
+    \vspace{2pt}\hrule\vspace{2pt}
+
+    \textcolor{blue!70}{\textbf{Turn 1}} \textcolor{gray}{(137 tokens input)}\\
+    \textit{``Therefore, any number satisfying both conditions can be written as $x = 143k + 10$. If $k=0$, $x=10$. The smallest positive integer is \textbf{10}.''}
+    \hfill{\scriptsize\textcolor{green!60!black}{$\checkmark$ Correct}}
+
+    \vspace{2pt}\hrule\vspace{2pt}
+
+    \textcolor{blue!70}{\textbf{Turn 2}} \textcolor{gray}{(712 tokens input)}\\
+    \textit{``$143k + 10 \equiv 5 \pmod{7}$. Since $143 \equiv 3 \pmod{7}$ and $10 \equiv 3 \pmod{7}$, we have $3k + 3 \equiv 5 \pmod{7}$, so $3k \equiv 2 \pmod{7}$. Testing: $k=3$ gives $3 \times 3 = 9 \equiv 2$. Thus $k \equiv 3 \pmod{7}$, smallest $k=3$: $x = 143(3) + 10 = \textbf{439}$.''}
+    \hfill{\scriptsize\textcolor{green!60!black}{$\checkmark$ Correct}}
+
+    \vspace{2pt}\hrule\vspace{2pt}
+
+    \textcolor{blue!70}{\textbf{Turn 3}} \textcolor{gray}{(1347 tokens input)}\\
+    \textit{``$\text{lcm}(7, 11, 13) = 7 \times 11 \times 13 = \textbf{1001}$. The solutions form an arithmetic progression with common difference 1001. Adding 1001 to 439 gives the next solution (1440), etc.''}
+    \hfill{\scriptsize\textcolor{green!60!black}{$\checkmark$ Correct}}
+
+    \vspace{2pt}\hrule\vspace{2pt}
+
+    \textcolor{blue!70}{\textbf{Turn 4}} \textcolor{gray}{(1681 tokens input)}\\
+    \textit{``\textbf{Constraint Checklist \& Confidence Score:}\\
+    1. Answer q4? Yes.\\
+    2. Concise? Yes.\\
+    3. Clear? Yes.\\
+    4. Show reasoning? Yes.\\
+    5. Confidence Score: 100\%.''}
+
+    \vspace{3pt}
+    \colorbox{red!25}{\parbox{0.92\linewidth}{\centering\textbf{$\times$ GENERATION BUDGET EXHAUSTED}\\Output contains only self-assessment checklist\\No numerical answer produced}}
+
+    \vspace{3pt}
+    \textcolor{red!80}{\textbf{Final answer: None}} \hfill \textcolor{gray}{Token growth: 137$\rightarrow$1681}
+    \end{mdframed}
+  \end{minipage}%
+  \hfill%
+  \begin{minipage}[t]{0.48\textwidth}
+    \begin{mdframed}[
+      frametitle={\textbf{SLSC (Qwen3.5-4B) -- Success}},
+      frametitlerule=true,
+      frametitlebackgroundcolor=green!15,
+      backgroundcolor=green!3,
+      linecolor=green!60,
+      linewidth=1pt,
+      innertopmargin=6pt,
+      innerbottommargin=6pt
+    ]
+    \textcolor{gray}{\textbf{Problem:}} Find largest integer $<2010$ with remainder 5 (mod 7), 10 (mod 11), 10 (mod 13).
+
+    \vspace{2pt}\hrule\vspace{2pt}
+
+    \textcolor{blue!70}{\textbf{Turn 1}} \textcolor{gray}{(142 tokens input)}\\
+    \textit{``Therefore, any number satisfying both conditions can be written as $x = 143k + 10$. To find the smallest positive integer, if $k=0$, $x=10$. \textbf{Answer: 10}.''}
+    \hfill{\scriptsize\textcolor{green!60!black}{$\checkmark$ Correct}}
+
+    \textcolor{gray}{\textbf{State $S_1$:}} \texttt{1. x = 143k + 10; 2. Smallest is 10} \textcolor{gray}{(54 tokens)}
+
+    \vspace{2pt}\hrule\vspace{2pt}
+
+    \textcolor{blue!70}{\textbf{Turn 2}} \textcolor{gray}{(188 tokens input)}\\
+    \textit{``The smallest positive integer is \textbf{439}.''}
+    \hfill{\scriptsize\textcolor{green!60!black}{$\checkmark$ Correct}}
+
+    \textcolor{gray}{\textbf{State $S_2$:}} \texttt{1. x = 143k + 10; 2. Answer is 439} \textcolor{gray}{(66 tokens)}
+
+    \vspace{2pt}\hrule\vspace{2pt}
+
+    \textcolor{blue!70}{\textbf{Turn 3}} \textcolor{gray}{(222 tokens input)}\\
+    \textit{``Therefore, the common difference is \textbf{1001}. Any integer satisfying the given remainder conditions can be found by adding multiples of 1001 to the base solution 439.''}
+    \hfill{\scriptsize\textcolor{green!60!black}{$\checkmark$ Correct}}
+
+    \textcolor{gray}{\textbf{State $S_3$:}} \texttt{1. x = 143k + 10; 2. Answer is 439; 3. Common diff is 1001} \textcolor{gray}{(96 tokens)}
+
+    \vspace{2pt}\hrule\vspace{2pt}
+
+    \textcolor{blue!70}{\textbf{Turn 4}} \textcolor{gray}{(229 tokens input)}\\
+    \textit{``The largest integer less than 2010 in this sequence is obtained when $k=1$: $439 + 1001 = 1440$. \textbf{Answer: 1440}.''}
+    \hfill{\scriptsize\textcolor{green!60!black}{$\checkmark$ Correct}}
+
+    \vspace{3pt}
+    \colorbox{green!25}{\parbox{0.92\linewidth}{\centering\textbf{$\checkmark$ ANSWER PRODUCED}\\Direct computation with compact state\\All turns correct}}
+
+    \vspace{3pt}
+    \textcolor{green!70!black}{\textbf{Final answer: 1440}} \hfill \textcolor{gray}{Token growth: 142$\rightarrow$229 (86\% reduction)}
+    \end{mdframed}
+  \end{minipage}
+
+  \caption{Representative failure case at Qwen3.5-4B (problem: number\_theory/1002). \textbf{Left:} Full History accumulates verbose reasoning across turns; by Turn 4, input context reaches 1681 tokens and the generation budget is exhausted, producing only a self-assessment checklist with no numerical answer (response-style cascade). \textbf{Right:} SLSC maintains compressed state (54--121 tokens); Turn 4 input is only 229 tokens, allowing the model to perform direct computation and produce the correct answer. Token reduction: 86\%.}
   \label{fig:case_4b}
-\end{figure}
+\end{figure*}
 
 \subsubsection{Why does compression fail at 2B?}
 \label{sec:slsc_2b_failure}
 
-We similarly annotated problems where compression fails but Full History succeeds, at the 2B scale (Table~\ref{tab:slsc_failure}). The dominant pattern is qualitatively different: 2B reasoners struggle to parse compressed representations productively. In several cases the reasoner ignores the compressed state entirely and re-derives answers from the original problem statement only---losing the benefit of accumulated intermediate facts. This suggests a capability threshold: structured atomic propositions and condensed narratives require a minimum parsing capability that 2B models do not reliably exhibit, even though they handle short raw conversation histories adequately.
+We similarly annotated 16 problems where compression fails but Full History succeeds, at the 2B scale (Table~\ref{tab:slsc_failure}). The dominant pattern is qualitatively different from 4B: 2B reasoners can parse the compressed state structure (0\% parse failures) but struggle to correctly interpret its semantic content. In 81\% of failures, the model encodes a wrong intermediate result in the state as early as turn 1 (e.g., wrong direction vector, wrong angle relation), and all subsequent turns read that incorrect fact as ground truth, compounding the error. In 12\% of cases, the reasoner ignores the compressed state entirely and re-derives answers from the original problem statement only, losing the benefit of accumulated intermediate facts. This suggests a capability threshold: compressed representations require not just syntactic parsing ability, but semantic reasoning capacity to validate and correctly propagate intermediate facts---a capability that 2B models do not reliably exhibit, even though they handle short raw conversation histories adequately.
 
 \begin{table}[t]
   \centering
   \small
-  \caption{Failure mode distribution of compression methods on Qwen3.5-2B (problems where Full History succeeds, compression fails).}
+  \caption{Failure mode distribution of compression methods on Qwen3.5-2B (16 problems where Full History succeeds, compression fails).}
   \label{tab:slsc_failure}
   \begin{tabular}{lrr}
     \toprule
     \textbf{Failure mode} & \textbf{Count} & \textbf{\%} \\
     \midrule
-    Fails to parse compressed representation & XX & XX.X \\
-    Ignores state, re-derives from $P$       & XX & XX.X \\
-    Misinterprets state semantics            & XX & XX.X \\
-    Other                                    & XX & XX.X \\
+    Fails to parse compressed representation & 0 & 0.0 \\
+    Ignores state, re-derives from $P$       & 2 & 12.5 \\
+    Misinterprets state semantics            & 13 & 81.3 \\
+    Other                                    & 1 & 6.3 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-This pattern supports our capability-threshold interpretation: compressed representations require a minimum parsing capability from the reasoner that 2B models do not reliably exhibit, even though they handle short raw conversation histories adequately. At 4B and above, this threshold is crossed, and compression becomes beneficial.
+This pattern supports our capability-threshold interpretation: compressed representations require not just syntactic parsing ability, but semantic reasoning capacity to validate and correctly use intermediate facts. 2B models can read the compressed state structure but cannot reliably verify its correctness or prevent error propagation across turns. At 4B and above, this threshold is crossed, and compression becomes beneficial.
 
 
 \subsection{Per-turn Accuracy Breakdown}
 \label{sec:per_turn}
 
-Figure~\ref{fig:per_turn} shows per-turn Correct Turn Rate at the 4B scale. The gap between compression methods and Full History widens at later turns: turn 1 and 2 accuracy is comparable across methods, but Full History accuracy drops sharply at turns 3 and 4 while compression methods remain stable. This is consistent with cumulative cascade effects in Full History; compression methods' bounded state prevents this degradation.
+Figure~\ref{fig:per_turn} shows per-turn Correct Turn Rate across all four Qwen3.5 scales. The capability threshold is clearly visible: at 0.8B and 2B, compression methods (especially SLSC with Lean) show sharp accuracy drops across turns, while Full History maintains relatively stable performance. At 4B and 9B, the pattern reverses: compression methods maintain stable accuracy across turns while Full History drops sharply at turns 3 and 4. This crossover supports our interpretation that compressed representations require a minimum reasoning capacity to parse and utilize effectively, and that above this threshold, compression prevents the cumulative cascade effects that degrade Full History performance.
 
-% \begin{figure}[t]
-%   \centering
-%   \includegraphics[width=0.95\linewidth]{figures/per_turn.pdf}
-%   \caption{Per-turn Correct Turn Rate at Qwen3.5-4B. Sample sizes by turn: $n_1=n_2=100$, $n_3=87$, $n_4=30$, $n_5=3$. We omit turn 5 from analysis due to small sample.}
-%   \label{fig:per_turn}
-% \end{figure}
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/per_turn_by_mode.png}
+  \caption{Per-turn Correct Turn Rate across all Qwen3.5 scales (0.8B, 2B, 4B, 9B). Sample sizes by turn: $n_1=n_2=100$, $n_3=87$, $n_4=30$, $n_5=3$. We omit turn 5 from analysis due to small sample. The capability threshold is evident: compression methods harm accuracy at 0.8B/2B but substantially improve it at 4B/9B, with the gap widening at later turns.}
+  \label{fig:per_turn}
+\end{figure*}

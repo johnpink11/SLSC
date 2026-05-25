@@ -19,40 +19,19 @@
 **Suggested tool:** Draw.io, TikZ, or similar
 
 ### 3. Figure: fig:state_growth (Experiments)
-**Location:** `sections/experiments.tex`, line 168 (commented out)  
-**Status:** ❌ MISSING - Commented out, needs to be created  
+**Location:** `sections/experiments.tex`, line 165  
+**Status:** ✅ COMPLETED - Figure added with state_growth.png  
 **Description:** Cumulative input tokens seen by Agent A as a function of turn index
-**Requirements:**
-- X-axis: Turn index (1, 2, 3, 4, 5)
-- Y-axis: Cumulative input tokens
-- Lines for: Full History (linear growth), Summary (bounded), SLSC w/o Formal (bounded), SLSC with Lean (bounded)
-- Show that Full History grows linearly while compression methods maintain near-constant per-turn state size
-**Data needed:** Per-turn token counts for each condition at 4B scale
 
 ### 4. Figure: fig:case_4b (Experiments)
-**Location:** `sections/experiments.tex`, line 217  
-**Status:** ❌ MISSING - Placeholder exists but content needed  
-**Description:** Representative 4B failure case showing Full History vs. compression methods
-**Requirements:**
-- Side-by-side comparison (or before/after)
-- Left: Full History accumulated meta-reasoning trace (truncated, >6000 tokens)
-- Right: Compression method's compact state with direct answer
-- Show how Full History exhausts generation budget before producing final answer
-- Highlight the "response-style cascade" failure mode
-**Format:** Text box comparison or screenshot-style figure
+**Location:** `sections/experiments.tex`, line 210  
+**Status:** ✅ COMPLETED - Side-by-side comparison created  
+**Description:** Representative 4B failure case showing Full History vs. SLSC (number_theory/1002)
 
 ### 5. Figure: fig:per_turn (Experiments)
-**Location:** `sections/experiments.tex`, line 254 (commented out)  
-**Status:** ❌ MISSING - Commented out, needs to be created  
+**Location:** `sections/experiments.tex`, line 349  
+**Status:** ✅ COMPLETED - Figure added with per_turn_by_mode.png  
 **Description:** Per-turn Correct Turn Rate at Qwen3.5-4B scale
-**Requirements:**
-- X-axis: Turn number (1, 2, 3, 4, 5)
-- Y-axis: Correct Turn Rate (%)
-- Lines for: Full History, Summary, SLSC w/o Formal, SLSC with Lean
-- Sample sizes: n₁=n₂=100, n₃=87, n₄=30, n₅=3
-- Omit turn 5 from analysis due to small sample
-- Show that gap widens at later turns (turns 3-4)
-**Data needed:** Per-turn accuracy breakdown for each condition
 
 ---
 
@@ -60,37 +39,18 @@
 
 ### 1. Table: tab:lean_quality (Experiments)
 **Location:** `sections/experiments.tex`, line 112  
-**Status:** ⚠️ INCOMPLETE - Structure exists, data marked as XX  
+**Status:** ✅ COMPLETED - Data filled from manual annotation  
 **Description:** Manual quality analysis of 50 randomly sampled Lean~4 outputs
-**Data needed:**
-- Syntactically valid Lean~4: Count & %
-- Semantically aligned with NL: Count & %
-- Hallucinated symbols/types: Count & %
-- Successfully type-checks: Count & %
-**Action required:** Manual annotation of 50 Lean outputs from Qwen3.5-4B run
 
 ### 2. Table: tab:fh_failure (Experiments)
-**Location:** `sections/experiments.tex`, line 191  
-**Status:** ⚠️ INCOMPLETE - Structure exists, data marked as XX  
-**Description:** Failure mode distribution of Full History on Qwen3.5-4B (30 problems)
-**Data needed:**
-- Response-style cascade: Count & %
-- Answer truncation at max_tokens: Count & %
-- Numerical condition forgetting: Count & %
-- Logic error unrelated to context: Count & %
-- Other: Count & %
-**Action required:** Manual annotation of 30 problems where compression succeeds but Full History fails
+**Location:** `sections/experiments.tex`, line 187  
+**Status:** ✅ COMPLETED - Data filled from manual annotation (31 problems)  
+**Description:** Failure mode distribution of Full History on Qwen3.5-4B
 
 ### 3. Table: tab:slsc_failure (Experiments)
-**Location:** `sections/experiments.tex`, line 229  
-**Status:** ⚠️ INCOMPLETE - Structure exists, data marked as XX  
+**Location:** `sections/experiments.tex`, line 324  
+**Status:** ✅ COMPLETED - Data filled from manual annotation (16 problems)  
 **Description:** Failure mode distribution of compression methods on Qwen3.5-2B
-**Data needed:**
-- Fails to parse compressed representation: Count & %
-- Ignores state, re-derives from P: Count & %
-- Misinterprets state semantics: Count & %
-- Other: Count & %
-**Action required:** Manual annotation of problems where Full History succeeds but compression fails at 2B
 
 ---
 
@@ -223,12 +183,12 @@
 3. ❌ **Figure: fig:pipeline** - Core architecture diagram
 4. ❌ **Appendix: app:prompts** - Essential for reproducibility
 5. ❌ **Appendix: app:dataset** - Essential for understanding task
-6. ⚠️ **Fill missing table data** (tab:lean_quality, tab:fh_failure, tab:slsc_failure)
+6. ✅ **Fill missing table data** - COMPLETED (tab:lean_quality, tab:fh_failure, tab:slsc_failure)
 
 ### Medium Priority (Strongly recommended)
-7. ❌ **Figure: fig:state_growth** - Visualizes key token efficiency claim
-8. ❌ **Figure: fig:per_turn** - Shows per-turn accuracy breakdown
-9. ❌ **Figure: fig:case_4b** - Concrete failure case illustration
+7. ✅ **Figure: fig:state_growth** - COMPLETED
+8. ✅ **Figure: fig:per_turn** - COMPLETED
+9. ✅ **Figure: fig:case_4b** - COMPLETED
 10. ⚠️ **Implementation details** - GPU specs, timing, code release plan
 
 ### Low Priority (Nice to have)
@@ -243,18 +203,18 @@
 | Task | Estimated Time | Difficulty |
 |------|---------------|------------|
 | Create fig:pipeline | 2-3 hours | Medium |
-| Create fig:state_growth | 1-2 hours | Easy (if data available) |
-| Create fig:per_turn | 1-2 hours | Easy (if data available) |
-| Create fig:case_4b | 2-3 hours | Medium |
+| ~~Create fig:state_growth~~ | ~~1-2 hours~~ | ✅ DONE |
+| ~~Create fig:per_turn~~ | ~~1-2 hours~~ | ✅ DONE |
+| ~~Create fig:case_4b~~ | ~~2-3 hours~~ | ✅ DONE |
 | Write app:prompts | 2-3 hours | Easy |
 | Write app:dataset | 3-4 hours | Medium |
-| Annotate 50 Lean outputs | 3-4 hours | Medium |
-| Annotate 30 FH failures | 2-3 hours | Medium |
-| Annotate 2B failures | 2-3 hours | Medium |
+| ~~Annotate 50 Lean outputs~~ | ~~3-4 hours~~ | ✅ DONE |
+| ~~Annotate 31 FH failures~~ | ~~2-3 hours~~ | ✅ DONE |
+| ~~Annotate 16 2B failures~~ | ~~2-3 hours~~ | ✅ DONE |
 | Fill implementation details | 0.5 hours | Easy |
 | Code/data release prep | 4-6 hours | Medium |
 
-**Total estimated time:** 23-33 hours
+**Total estimated time remaining:** 12-18.5 hours (down from 23-33 hours)
 
 ---
 
