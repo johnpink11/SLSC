@@ -103,14 +103,7 @@ We manually annotated 50 randomly sampled Lean outputs produced by Agent $\mathc
   \end{tabular}
 \end{table}
 
-We identify four contributing factors to the Lean ablation result:
-
-\begin{enumerate}[noitemsep,topsep=2pt]
-  \item \textbf{Out-of-distribution autoformalization}: statement-level autoformalizers are trained on problem-theorem pairs, not on context-stripped atomic intermediate propositions.
-  \item \textbf{No verifier feedback}: SLSC's autoformalization is stateless; there is no Lean kernel check that could reject malformed output. Without verifier-in-the-loop feedback, the formalized output introduces noise rather than grounding.
-  \item \textbf{Reasoner under-utilization}: qualitative inspection of Agent $\mathcal{A}$ responses shows the reasoner rarely references the Lean stubs explicitly when constructing its answer.
-  \item \textbf{Granularity mismatch}: atomic propositions stripped of problem context may lack the semantic richness needed for meaningful formalization.
-\end{enumerate}
+We attribute the degradation primarily to two factors: the autoformalization is stateless---without a Lean kernel check to reject malformed output, formalized stubs introduce noise rather than grounding---and the autoformalizer is out-of-distribution for context-stripped atomic propositions rather than complete problem-theorem pairs. Qualitative inspection further shows that Agent~$\mathcal{A}$ rarely references the Lean stubs when constructing answers, suggesting the formal augmentation provides little signal in practice.
 
 This negative result has broader implications for formal-language augmentation in LLM reasoning pipelines: stateless autoformalization without verifier feedback appears insufficient to improve downstream reasoning, even when the formal language is syntactically correct. The finding aligns with prior work emphasizing verifier-grounded formalization~\citep{jiang2023draft,yang2023leandojo}, and suggests that the benefit of formal language comes from the verifier's rejection signal rather than the formal syntax itself.
 
@@ -149,10 +142,7 @@ Compression methods deliver accuracy gains while simultaneously reducing per-tur
   \label{fig:state_growth}
 \end{figure*}
 
-Figure~\ref{fig:state_growth} visualizes per-turn state size growth. Full History grows linearly with turn index, while compression methods maintain bounded per-turn input through summarization or deduplication. The key finding is that compression delivers both accuracy gains and per-turn token savings at 4B and above: Summary achieves 77\% accuracy with 62\% per-turn input reduction and 26\% net token savings; SLSC without formalization achieves 71\% accuracy with 62\% per-turn input reduction and 16\% net savings. Both substantially outperform Full History's 61\% accuracy at higher total cost.
-
-\paragraph{Cost-accuracy tradeoff.}
-Compression methods shift cost from frequent Agent $\mathcal{A}$ calls (on growing contexts) to periodic Agent $\mathcal{B}$ curation calls. Summary achieves the best cost-accuracy tradeoff at 4B (highest accuracy, largest net savings). SLSC without formalization provides moderate net savings with strong accuracy gains. SLSC with Lean augmentation incurs net overhead while degrading accuracy, making it strictly dominated. The choice between Summary and SLSC depends on whether natural-language narrative or structured atomic propositions better match downstream reasoning requirements; our results suggest both are effective, with Summary showing a slight edge at 4B and SLSC showing a slight edge at 9B.
+Figure~\ref{fig:state_growth} visualizes per-turn state size growth. Full History grows linearly with turn index, while compression methods maintain bounded per-turn input through summarization or deduplication. The key finding is that compression delivers both accuracy gains and per-turn token savings at 4B and above: Summary achieves 77\% accuracy with 62\% per-turn input reduction and 26\% net token savings; SLSC without formalization achieves 71\% accuracy with 62\% per-turn input reduction and 16\% net savings. SLSC with Lean augmentation incurs net overhead ($-1\%$) while degrading accuracy, making it strictly dominated. Both Summary and SLSC without formalization substantially outperform Full History's 61\% accuracy at lower total cost.
 
 
 \subsection{Failure Mode Analysis: Understanding Compression Benefits and Limitations}
@@ -163,25 +153,7 @@ To understand the mechanisms behind compression's accuracy gains at 4B/9B and it
 \subsubsection{Why does compression help at 4B?}
 \label{sec:fh_failure}
 
-We annotated 31 problems on which Full History fails but at least one compression method achieves higher per-turn accuracy, at the 4B scale. Table~\ref{tab:fh_failure} reports the failure mode distribution.
-
-\begin{table}[t]
-  \centering
-  \small
-  \caption{Failure mode distribution of Full History on Qwen3.5-4B (31 problems where compression methods achieve higher per-turn accuracy). Categories are not mutually exclusive; rows may sum to $>$100\%.}
-  \label{tab:fh_failure}
-  \begin{tabular}{lrr}
-    \toprule
-    \textbf{Failure mode} & \textbf{Count} & \textbf{\%} \\
-    \midrule
-    Response-style cascade & 7 & 22.6 \\
-    Answer truncation at \texttt{max\_tokens} & 23 & 74.2 \\
-    Numerical condition forgetting   & 1 & 3.2 \\
-    Logic error unrelated to context & 0 & 0.0 \\
-    Other                            & 0 & 0.0 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+We annotated 31 problems on which Full History fails but at least one compression method achieves higher per-turn accuracy, at the 4B scale (Table~\ref{tab:fh_failure} in Appendix~\ref{app:results}).
 
 The dominant failure mode is \textbf{answer truncation at \texttt{max\_tokens}} (74\%): Full History accumulates verbatim prior turns, which inflates the input context and forces the model to use more tokens to re-read prior work before generating; combined with the 1024-token per-turn output cap, the model runs out of space mid-derivation. A secondary pattern is \textbf{response-style cascade} (23\%): Agent $\mathcal{A}$'s prior-turn responses, when accumulated in dialogue history, induce the model to produce increasingly verbose meta-reasoning trace in subsequent turns. Compression methods avoid both failures by maintaining only the essential mathematical facts, allowing the reasoner to produce direct answers within the token budget.
 
@@ -300,26 +272,7 @@ Figure~\ref{fig:case_4b} shows a representative example. By turn 4, the Full His
 \subsubsection{Why does compression fail at 2B?}
 \label{sec:slsc_2b_failure}
 
-We similarly annotated 16 problems where compression fails but Full History succeeds, at the 2B scale (Table~\ref{tab:slsc_failure}). The dominant pattern is qualitatively different from 4B: 2B reasoners can parse the compressed state structure (0\% parse failures) but struggle to correctly interpret its semantic content. In 81\% of failures, the model encodes a wrong intermediate result in the state as early as turn 1 (e.g., wrong direction vector, wrong angle relation), and all subsequent turns read that incorrect fact as ground truth, compounding the error. In 12\% of cases, the reasoner ignores the compressed state entirely and re-derives answers from the original problem statement only, losing the benefit of accumulated intermediate facts. This suggests a capability threshold: compressed representations require not just syntactic parsing ability, but semantic reasoning capacity to validate and correctly propagate intermediate facts---a capability that 2B models do not reliably exhibit, even though they handle short raw conversation histories adequately.
-
-\begin{table}[t]
-  \centering
-  \small
-  \caption{Failure mode distribution of compression methods on Qwen3.5-2B (16 problems where Full History succeeds, compression fails).}
-  \label{tab:slsc_failure}
-  \begin{tabular}{lrr}
-    \toprule
-    \textbf{Failure mode} & \textbf{Count} & \textbf{\%} \\
-    \midrule
-    Fails to parse compressed representation & 0 & 0.0 \\
-    Ignores state, re-derives from $P$       & 2 & 12.5 \\
-    Misinterprets state semantics            & 13 & 81.3 \\
-    Other                                    & 1 & 6.3 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-This pattern supports our capability-threshold interpretation: compressed representations require not just syntactic parsing ability, but semantic reasoning capacity to validate and correctly use intermediate facts. 2B models can read the compressed state structure but cannot reliably verify its correctness or prevent error propagation across turns. At 4B and above, this threshold is crossed, and compression becomes beneficial.
+We similarly annotated 16 problems where compression fails but Full History succeeds, at the 2B scale (Table~\ref{tab:slsc_failure} in Appendix~\ref{app:results}). The dominant pattern is qualitatively different from 4B: 2B reasoners can parse the compressed state structure (0\% parse failures) but struggle to correctly interpret its semantic content. In 81\% of failures, the model encodes a wrong intermediate result in the state as early as turn 1 (e.g., wrong direction vector, wrong angle relation), and all subsequent turns read that incorrect fact as ground truth, compounding the error. In 12\% of cases, the reasoner ignores the compressed state entirely and re-derives answers from the original problem statement only, losing the benefit of accumulated intermediate facts. This suggests a capability threshold: compressed representations require not just syntactic parsing ability, but semantic reasoning capacity to validate and correctly propagate intermediate facts---a capability that 2B models do not reliably exhibit, even though they handle short raw conversation histories adequately. At 4B and above, this threshold is crossed, and compression becomes beneficial.
 
 
 \subsection{Per-turn Accuracy Breakdown}

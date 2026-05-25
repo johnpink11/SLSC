@@ -3,18 +3,23 @@
 \paragraph{Multi-turn reasoning degradation.}
 Recent work documents systematic performance loss in multi-turn settings. \citet{lanban2025lost} report an average 39\% accuracy drop
 across six generation tasks over 200{,}000 simulated conversations with 15 frontier models, characterizing failure as a ``lost-in-conversation''
-phenomenon. \citet{liu2024lost} show that language models do not robustly use information in long contexts, with retrieval accuracy varying 
-sharply by position. These findings establish multi-turn degradation as broad-spectrum, but existing multi-turn benchmarks largely target 
+phenomenon. \citet{liu2024lost} show that language models do not robustly use information in long contexts, with retrieval accuracy varying
+sharply by position. \citet{kwan2024mteval} benchmark multi-turn capabilities across recollection, expansion, refinement, and follow-up
+interactions, finding that error propagation across turns is a primary driver of performance loss. \citet{zheng2023mtbench} introduce
+MT-Bench as an 80-question multi-turn evaluation framework with LLM-as-judge scoring, establishing a standard protocol for multi-turn
+dialogue assessment. These findings establish multi-turn degradation as broad-spectrum, but existing multi-turn benchmarks largely target
 underspecification and clarification rather than numerical chaining. Our dataset complements this literature by isolating numerical-dependency
 failures, where each sub-question is fully specified but its solution requires the prior turn's numerical result.
 
 \paragraph{Prompt and token-level compression}
-Prompt compression methods reduce input length while attempting to preserve task performance. LLMLingua~\citep{jiang2023llmlingua} and its 
-extensions identify and remove low-information tokens via small auxiliary models, operating at the lexical level without awareness of which 
-tokens encode task-critical structure. By design, a numerical constant inside an inequality and a discourse adjective receive comparable
-treatment. SLSC differs along two axes: compression operates over semantic units---atomic mathematical propositions---rather than tokens, and 
-is performed by a dedicated curator agent prompted to identify mathematical content. We view the two approaches as orthogonal and do not include 
-token-level compression in our experimental comparison, which focuses on state-maintenance strategies sharing the same multi-turn decomposed 
+Prompt compression methods reduce input length while attempting to preserve task performance. LLMLingua~\citep{jiang2023llmlingua} and its
+extensions~\citep{jiang2024longllmlingua} identify and remove low-information tokens via small auxiliary models, operating at the lexical level without awareness of which
+tokens encode task-critical structure. KV-cache eviction methods such as H2O~\citep{zhang2023h2o} and SnapKV~\citep{li2024snapkv} selectively
+retain high-attention tokens during generation, while StreamingLLM~\citep{xiao2024streamingllm} identifies attention sinks at initial positions
+that receive disproportionate weight regardless of semantic content. By design, a numerical constant inside an inequality and a discourse adjective receive comparable
+treatment under token-level methods. SLSC differs along two axes: compression operates over semantic units---atomic mathematical propositions---rather than tokens, and
+is performed by a dedicated curator agent prompted to identify mathematical content. We view the two approaches as orthogonal and do not include
+token-level compression in our experimental comparison, which focuses on state-maintenance strategies sharing the same multi-turn decomposed
 setup.
 
 \paragraph{Reasoning-state compression and summarization}
@@ -41,8 +46,9 @@ from structured representation per se.
 \paragraph{Formal language augmentation for reasoning.}
 A separate line of work explores formal-language augmentation for mathematical reasoning. Autoformalization~\citep{wu2022autoformalization}
 translates natural-language statements into formal expressions; Draft, Sketch, and Prove~\citep{jiang2023draft} interleaves natural-language
-drafting with formal verification; LeanDojo~\citep{yang2023leandojo} provides infrastructure for retrieval-augmented theorem proving. These
-works target end-to-end proof construction or single-statement formalization, with verifier feedback in the loop. SLSC's Lean~4 augmentation
+drafting with formal verification; LeanDojo~\citep{yang2023leandojo} provides infrastructure for retrieval-augmented theorem proving.
+Math-Shepherd~\citep{wang2024mathshepherd} introduces step-level process supervision for multi-step mathematical reasoning, automatically
+annotating correctness at each intermediate step. These works target end-to-end proof construction or single-statement formalization, with verifier feedback in the loop. SLSC's Lean~4 augmentation
 (Section~\ref{sec:agent_b}) instead explores a lighter use of formal language---type-annotating extracted propositions without a verifier---
 and our ablation (Section~\ref{sec:lean_ablation}) finds consistent accuracy degradation. This negative result aligns with the broader emphasis on
 verifier-grounded formalization: absent a Lean kernel check, the type annotation introduces noise that the reasoner cannot reliably exploit.

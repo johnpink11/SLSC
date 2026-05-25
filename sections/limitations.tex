@@ -1,7 +1,16 @@
 \section*{Limitations}
 
-This document does not cover the content requirements for ACL or any
-other specific venue.  Check the author instructions for
-information on
-maximum page lengths, the required ``Limitations'' section,
-and so on.
+\paragraph{Dataset scale and construction.}
+Our evaluation is restricted to 100 problems drawn from a single source (MATH-500, levels 3--5), decomposed via an automated pipeline. The decomposition process may introduce structural artifacts---such as artificial dependency phrasing or uneven step granularity---that do not reflect how multi-turn mathematical dialogues arise naturally. Human-authored multi-turn problems, or evaluation on larger and more diverse benchmarks, would provide a stronger test of generalizability.
+
+\paragraph{Model coverage.}
+All experiments use the Qwen3.5 model family (0.8B--9B). Whether the capability threshold we observe---compression benefits at 4B and above, but harms at 2B---holds across other architectures, training recipes, or instruction-tuned variants remains unknown. Results on a single model family limit the conclusions we can draw about the relationship between model capacity and compression strategy.
+
+\paragraph{Curator agent without verifier feedback.}
+Agent~$\mathcal{B}$ extracts and merges propositions without any symbolic validation. Incorrect or imprecise propositions propagate silently into subsequent turns, and there is no mechanism to detect or correct extraction errors. This is also the root cause of the Lean~4 degradation: stateless autoformalization without a proof-checking loop introduces syntactic noise that small models cannot reliably exploit. Integrating a Lean kernel or symbolic algebra system to validate extracted propositions is a natural next step.
+
+\paragraph{Evaluation metrics and judge reliability.}
+FCR and CTR reduce per-turn correctness to a three-way verdict (correct / partially correct / incorrect), which may not capture fine-grained reasoning quality. The LLM judge (Kimi~K2.6) is itself a language model whose per-turn error rate is not independently calibrated; systematic biases in its verdicts could affect the relative rankings of conditions.
+
+\paragraph{Computational overhead.}
+The twin-agent framework introduces an additional curator call at each turn. We report token counts but not wall-clock latency or throughput. In latency-sensitive deployments, the curator overhead may offset the inference savings from reduced input length.
