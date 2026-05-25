@@ -128,3 +128,175 @@ into a multi-turn question sequence.
 \end{small}
 
 \noindent where \verb|{problem}|, \verb|{solution}|, and \verb|{answer}| are replaced with the corresponding entries from the MATH-500 dataset.
+
+\section{MATH-100-multi Turn-Count Distribution}
+\label{app:turn_dist}
+
+Table~\ref{tab:turn_dist} shows the distribution of sub-question counts across the 100 problems in the MATH-100-multi dataset, as determined by the decomposition pipeline.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ccc}
+\toprule
+\textbf{Turns} & \textbf{Count} & \textbf{Percentage} \\
+\midrule
+2 & 13 & 13.0\% \\
+3 & 58 & 58.0\% \\
+4 & 26 & 26.0\% \\
+5 &  3 &  3.0\% \\
+\midrule
+Total & 100 & 100.0\% \\
+\bottomrule
+\end{tabular}
+\caption{Turn-count distribution of MATH-100-multi ($n=100$).}
+\label{tab:turn_dist}
+\end{table}
+
+\section{Agent B Prompts}
+\label{app:agent_b_prompt}
+
+This appendix provides the complete prompts used by Agent B, including the Extract step and the Merge step.
+
+\subsection{Extract Step Prompt}
+
+\begin{lstlisting}[basicstyle=\small\ttfamily, breaklines=true, frame=none, xleftmargin=0.5em, xrightmargin=0.5em]
+You are a mathematical knowledge extractor. Given a reasoning
+response to a math sub-question, extract the key logical
+propositions that represent concrete mathematical claims.
+
+A valid proposition is one of:
+- An equation or inequality: "x = 3", "n >= 2"
+- A specific numeric result: "The answer is 42"
+- A named property: "n is prime", "f is injective on [0,1]"
+
+Rules:
+- Each proposition must be self-contained and atomic.
+- Write it as a direct claim, not a description of a step.
+- Omit reasoning steps that are not reusable facts.
+
+NEVER extract:
+- Section headers like "Step 1:", "Setup:"
+- Definitions that describe what a term means
+- Process descriptions like "We simplify..."
+- Bold phrases describing what you are about to do
+
+Your response must contain EXACTLY this structure:
+FINAL_LIST_START
+1. <proposition>
+2. <proposition>
+FINAL_LIST_END
+\end{lstlisting}
+
+\subsection{Merge Step Prompt}
+
+\begin{lstlisting}[basicstyle=\small\ttfamily, breaklines=true, frame=none, xleftmargin=0.5em, xrightmargin=0.5em]
+You are a mathematical knowledge base curator. Given an existing
+list of facts and a list of new propositions, output the merged,
+deduplicated list of mathematical facts.
+
+Rules:
+- Drop any new proposition already covered by an existing fact.
+- Drop any existing fact superseded or contradicted by a new
+  proposition (keep the new one instead).
+- Keep all remaining facts combined.
+- Do NOT write any analysis, reasoning, or commentary.
+
+Your response must contain EXACTLY this structure:
+FINAL_LIST_START
+1. <fact>
+2. <fact>
+FINAL_LIST_END
+\end{lstlisting}
+
+\section{LLM Judge Prompts}
+\label{app:judge_prompt}
+
+This appendix provides the complete prompts used by the LLM judge (Kimi K2.6) for per-turn accuracy (ACC) evaluation. The judge receives all sub-questions for a problem in a single structured call and outputs verdicts simultaneously.
+
+\subsection{System Prompt}
+
+\begin{lstlisting}[basicstyle=\small\ttfamily, breaklines=true, frame=none, xleftmargin=0.5em, xrightmargin=0.5em]
+You are a rigorous mathematical evaluator for a multi-turn reasoning
+system. You will be given a math problem decomposed into ordered
+sub-questions. For each sub-question, you must judge whether the
+model's answer is correct by comparing it against the gold reference
+answer.
+
+# Evaluation Criteria
+
+For each turn, assign one of three verdicts:
+
+- "correct": The model reaches the same mathematical conclusion as
+  the gold answer. Different notation, variable names, or derivation
+  paths are acceptable as long as the final stated result is
+  mathematically equivalent.
+- "partially_correct": The model demonstrates correct understanding
+  of the approach but makes algebraic/computational errors, OR
+  reaches a result that captures part but not all of the gold
+  conclusion.
+- "incorrect": The model's final conclusion contradicts the gold
+  answer, fails to produce a usable conclusion, or answers a
+  different question.
+
+# Important Rules
+
+1. Judge each turn independently. Do NOT penalize a later turn for
+   using a value that contradicts an earlier (wrong) turn's output
+   -- evaluate only whether the current turn's conclusion matches
+   its own gold answer.
+2. Focus on the FINAL stated conclusion of the model, not
+   intermediate scratch work. Verbosity is not a defect.
+3. Mathematical equivalence over textual similarity. `c = -2` and
+   `the coefficient equals -2` are the same.
+4. If the model fails to reach a conclusion (e.g., trails off, gets
+   stuck mid-derivation), mark it `incorrect`.
+5. Notation drift: if the model invents new variables (e.g., `c_1`
+   vs `c`) but the conclusion is still equivalent, treat as correct.
+
+# Output Format
+
+Return ONLY a valid JSON object, no preamble, no markdown fences:
+
+{
+  "evaluations": [
+    {
+      "turn": <int>,
+      "verdict": "correct" | "partially_correct" | "incorrect",
+      "model_conclusion": "<one-line summary of what the model
+                           actually concluded for this sub-question>",
+      "gold_conclusion": "<one-line summary of the gold answer's
+                          conclusion>",
+      "rationale": "<1-2 sentences explaining the verdict, citing
+                    the specific discrepancy if any>"
+    }
+  ],
+  "num_correct": <int>,
+  "num_partial": <int>,
+  "num_incorrect": <int>,
+  "overall_summary": "<2-3 sentences on the model's reasoning
+                      pattern across turns>"
+}
+\end{lstlisting}
+
+\subsection{User Template}
+
+Each call assembles the user message from the following template, where \texttt{\{problem\}} is the problem text, \texttt{\{gold\_final\_answer\}} is the final reference answer, and \texttt{\{turns\_block\}} is a concatenation of per-turn blocks each containing \texttt{sub\_question}, \texttt{gold\_answer}, and \texttt{model\_answer}.
+
+\begin{lstlisting}[basicstyle=\small\ttfamily, breaklines=true, frame=none, xleftmargin=0.5em, xrightmargin=0.5em]
+<main_problem>
+{problem}
+</main_problem>
+
+<gold_final_answer>
+{gold_final_answer}
+</gold_final_answer>
+
+<turns>
+<turn id="{turn_id}">
+  <sub_question>{question}</sub_question>
+  <gold_answer>{gold_answer}</gold_answer>
+  <model_answer>{model_answer}</model_answer>
+</turn>
+...
+</turns>
+\end{lstlisting}

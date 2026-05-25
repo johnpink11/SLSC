@@ -53,7 +53,7 @@ We propose \emph{Sparse Logic State Compression} (SLSC), a twin-agent framework 
 \label{fig:comparison}
 \end{figure*}
 
-We evaluate SLSC on Math-100-multi, a 100-problem multi-turn benchmark derived from MATH-500~\citep{lightman2023math500} (L3--L5), where each problem decomposes into 2--5 dependent sub-questions. We compare four strategies across four Qwen3.5 reasoner scales~\citep{qwen2024qwen25} (0.8B--9B). At 4B and above, compression methods substantially outperform raw history accumulation, with SLSC achieving strong gains while reducing per-turn tokens by 62\%. However, augmenting SLSC with Lean~4 formalization consistently degrades accuracy, suggesting stateless autoformalization without verifier feedback introduces noise.
+We evaluate SLSC on Math-100-multi, a 100-problem multi-turn benchmark derived from MATH-500~\citep{lightman2023math500} (L3--L5), where each problem decomposes into 2--5 dependent sub-questions. We compare four strategies across four Qwen3.5 reasoner scales~\citep{qwen3.5} (0.8B--9B). At 4B and above, compression methods substantially outperform raw history accumulation, with SLSC achieving strong gains while reducing per-turn tokens by 62\%. However, augmenting SLSC with Lean~4 formalization consistently degrades accuracy, suggesting stateless autoformalization without verifier feedback introduces noise.
 
 We make three contributions:
 \begin{enumerate}[noitemsep, topsep=2pt]
