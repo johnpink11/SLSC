@@ -84,12 +84,12 @@ The key finding is that compression delivers substantial accuracy gains at 4B an
 
 Table~\ref{tab:main} shows that adding Lean~4 formalization to SLSC consistently degrades or leaves unchanged downstream accuracy across all four scales. The mean effect is $-2.75$ percentage points; at 2B the degradation is severe ($-5$pp, from 50\% to 45\%). At 0.8B, Lean augmentation produces a small positive effect ($+1$pp, from 20\% to 21\%); at 4B and 9B, the effect is negative ($-2$pp and $-5$pp respectively). Across all scales, Lean augmentation never improves accuracy beyond the 2B threshold, and consistently degrades at the scales where SLSC shows its strongest gains (4B, 9B).
 
-We manually annotated 50 randomly sampled Lean outputs produced by Agent $\mathcal{B}$ during the Qwen3.5-4B run (Table~\ref{tab:lean_quality}). Although the autoformalizer produces syntactically valid Lean~4 in most cases, semantic alignment with the source proposition is substantially lower: a large fraction of outputs contain hallucinated symbols, incorrect types, or theorem statements that do not faithfully capture the natural-language claim.
+We manually annotated 50 randomly sampled Lean outputs produced by Agent $\mathcal{B}$ during the Qwen3.5-4B run (Table~\ref{tab:lean_quality}). Although the autoformalizer produces output that attempts to express the NL claim in all cases, the soundness of the formalizations is substantially lower: a large fraction of outputs contain hallucinated symbols, incorrect types, or undefined terms that prevent type-checking.
 
 \begin{table}[t]
   \centering
   \small
-  \caption{Manual quality analysis of 50 randomly sampled Lean~4 outputs from SLSC + Lean (Qwen3.5-4B).}
+  \caption{Manual quality analysis of 50 randomly sampled Lean~4 outputs from SLSC + Lean (Qwen3.5-4B). Dimensions are evaluated independently; a proposition can simultaneously attempt to express the NL claim yet contain hallucinated symbols or fail to type-check.}
   \label{tab:lean_quality}
   \begin{tabular}{lrr}
     \toprule
@@ -150,6 +150,7 @@ Figure~\ref{fig:state_growth} visualizes per-turn state size growth. Full Histor
 
 To understand the mechanisms behind compression's accuracy gains at 4B/9B and its failure at 2B, we manually analyzed problems where compression and Full History diverge in correctness.
 
+\vspace{-6pt}
 \subsubsection{Why does compression help at 4B?}
 \label{sec:fh_failure}
 

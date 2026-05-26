@@ -1,7 +1,9 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-We introduced Sparse Logic State Compression (SLSC), a twin-agent framework that addresses multi-turn mathematical reasoning degradation in small language models by maintaining accumulated context as atomic mathematical propositions rather than unstructured text. Through controlled experiments on Math-100-multi, a 100-problem benchmark with explicit numerical dependencies, we demonstrated that structured state compression substantially improves accuracy at 4B parameters and above, achieving strong gains over raw history accumulation while reducing per-turn input tokens by 62\%.
+We introduced Sparse Logic State Compression (SLSC), a twin-agent framework that addresses 
+ multi-turn mathematical reasoning degradation in
+small language models by maintaining accumulated context as atomic mathematical propositions rather than unstructured text. Through controlled experiments on Math-100-multi, a 100-problem benchmark with explicit numerical dependencies, we demonstrated that structured state compression substantially improves accuracy at 4B parameters and above, achieving strong gains over raw history accumulation while reducing per-turn input tokens by 62\%.
 
 Our results reveal a capability threshold: compression methods benefit models at 4B+ scales but harm 2B models, suggesting that parsing compressed representations requires a minimum reasoning capacity. Interestingly, natural-language summary achieves comparable or larger gains than SLSC's structured propositions, indicating that the primary benefit comes from bounded context size rather than structured representation alone. This finding challenges the assumption that mathematical reasoning inherently requires typed state, and suggests that attention dilution in long contexts is the dominant failure mode in this regime.
 
