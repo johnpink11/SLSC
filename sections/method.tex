@@ -2,7 +2,7 @@
 
 \subsection{Overview}\label{sec:overview}
 
-SLSC encodes the accumulated multi-turn reasoning state as a sequence of atomic mathematical propositions, maintained across turns by a curator agent. Given a mathematical problem $P$ decomposed into sub-questions $q_1, \ldots, q_T$, we denote the compressed state at turn $t$ as $S_t$. The framework operates in two phases per turn $t$: (1) \textbf{Reasoning}: Agent $\mathcal{A}$ generates response $r_t = \mathcal{A}(P, S_{t-1}, q_t)$, conditioned on the compressed state from the previous turn; (2) \textbf{Curation}: Agent $\mathcal{B}$ updates the state $S_t = \mathcal{B}(S_{t-1}, r_t)$. Figure~\ref{fig:pipeline} illustrates the overall architecture. The end-to-end inference procedure is detailed in Appendix~\ref{app:inference_alg}.
+SLSC encodes the accumulated multi-turn reasoning state as a sequence of atomic mathematical propositions, maintained across turns by a curator agent. Given a mathematical problem $P$ decomposed into sub-questions $q_1, \ldots, q_T$, we denote the compressed state at turn $t$ as $S_t$. The framework operates in two phases per turn $t$: (1) \textbf{Reasoning}: Agent $\mathcal{A}$ generates response $r_t = \mathcal{A}(P, S_{t-1}, q_t)$, conditioned on the compressed state from the previous turn; (2) \textbf{Curation}: Agent $\mathcal{B}$ updates the state $S_t = \mathcal{B}(S_{t-1}, r_t)$. The end-to-end inference procedure is detailed in Appendix~\ref{app:inference_alg}.
 
 \subsection{Agent B: The Curator}\label{sec:agent_b}
 
@@ -18,7 +18,7 @@ The merging step integrates $\mathcal{P}_t$ into $S_{t-1}$ via three LLM-prompte
 
 \subsubsection{Formalization}
 
-As an optional augmentation, each extracted proposition may be autoformalized into a Lean~4 \texttt{theorem} stub appended alongside its natural language form. Our ablation (Section~\ref{sec:agent_b_ablation}) shows that formalization consistently degrades accuracy; all primary results are reported without it unless stated otherwise.
+As an optional augmentation, each extracted proposition may be autoformalized into a Lean~4 \texttt{theorem} stub appended alongside its natural language form. Our ablation (Section~\ref{sec:lean_ablation}) shows that formalization consistently degrades accuracy; all primary results are reported without it unless stated otherwise.
 
 \subsection{State Representation}\label{sec:state}
 

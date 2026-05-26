@@ -8,15 +8,9 @@
 **Description:** Comparison of Natural-Language Summary vs. SLSC representation at Turn 3
 
 ### 2. Figure: fig:pipeline (Method)
-**Location:** `sections/method.tex`, line 5  
-**Status:** ❌ MISSING - Referenced but not created  
-**Description:** Overall architecture diagram showing the SLSC framework
-**Requirements:**
-- Show the two-phase operation per turn: Reasoning (Agent A) and Curation (Agent B)
-- Illustrate the flow: Problem P → Agent A (with S_{t-1}, q_t) → response r_t → Agent B → updated state S_t
-- Visual representation of the twin-agent architecture
-- Should be a flowchart or system diagram
-**Suggested tool:** Draw.io, TikZ, or similar
+**Location:** `sections/method.tex`  
+**Status:** ~~❌ MISSING~~ → **🚫 DROPPED** - Decided not to include this figure; text description of the two-phase architecture is sufficient  
+**Description:** ~~Overall architecture diagram showing the SLSC framework~~ (removed reference from method.tex)
 
 ### 3. Figure: fig:state_growth (Experiments)
 **Location:** `sections/experiments.tex`, line 165  
@@ -180,7 +174,7 @@
 ### High Priority (Required for submission)
 1. ✅ Abstract - COMPLETED
 2. ✅ Conclusion - COMPLETED
-3. ❌ **Figure: fig:pipeline** - Core architecture diagram
+3. ~~❌ **Figure: fig:pipeline**~~ - **🚫 DROPPED**
 4. ❌ **Appendix: app:prompts** - Essential for reproducibility
 5. ❌ **Appendix: app:dataset** - Essential for understanding task
 6. ✅ **Fill missing table data** - COMPLETED (tab:lean_quality, tab:fh_failure, tab:slsc_failure)
@@ -202,7 +196,7 @@
 
 | Task | Estimated Time | Difficulty |
 |------|---------------|------------|
-| Create fig:pipeline | 2-3 hours | Medium |
+| ~~Create fig:pipeline~~ | ~~2-3 hours~~ | 🚫 DROPPED |
 | ~~Create fig:state_growth~~ | ~~1-2 hours~~ | ✅ DONE |
 | ~~Create fig:per_turn~~ | ~~1-2 hours~~ | ✅ DONE |
 | ~~Create fig:case_4b~~ | ~~2-3 hours~~ | ✅ DONE |

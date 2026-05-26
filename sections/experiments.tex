@@ -6,9 +6,9 @@ We evaluate SLSC on Math-100-multi, a multi-turn extension of 100 problems rando
 
 \subsection{Models}\label{sec:models}
 
-We instantiate Agent $\mathcal{A}$ with four sizes from the Qwen3.5 series (0.8B, 2B, 4B, 9B) to study how reasoner capacity interacts with structured state compression. Agent $\mathcal{B}$ is instantiated with Gemma3-27B throughout. The asymmetric instantiation reflects the differing computational profiles of the two roles: $\mathcal{A}$ is invoked once per turn on the hot path, while $\mathcal{B}$ runs once per turn with a higher per-call latency budget.
+We instantiate Agent $\mathcal{A}$ with four sizes from the Qwen3.5 series (0.8B, 2B, 4B, 9B) to study how reasoner capacity interacts with structured state compression. Agent $\mathcal{B}$ is instantiated with Gemma3-27B~\citep{gemmateam2025gemma3} throughout. The asymmetric instantiation reflects the differing computational profiles of the two roles: $\mathcal{A}$ is invoked once per turn on the hot path, while $\mathcal{B}$ runs once per turn with a higher per-call latency budget.
 
-All models are served via vLLM. For both agents, we use temperature $=0$, top-$p =1.0$, and maximum generation length of 1024 tokens. We set \texttt{enable\_thinking: True} for all Qwen3.5 calls to keep the configuration consistent across sizes. Detailed sampling parameters and prompt templates appear in Appendix~\ref{app:prompts}.
+All models are served via vLLM~\citep{kwon2023efficient}. For both agents, we use temperature $=0$, top-$p =1.0$, and maximum generation length of 1024 tokens. We set \texttt{enable\_thinking: True} for all Qwen3.5 calls to keep the configuration consistent across sizes. Detailed sampling parameters and prompt templates appear in Appendix~\ref{app:prompts}.
 
 \subsection{Baselines and Conditions}
 \label{sec:baselines}
@@ -22,7 +22,7 @@ We compare four conditions sharing identical decoding configuration and evaluati
   \item \textbf{SLSC (with Lean)}: full SLSC including optional autoformalization of each extracted proposition.
 \end{itemize}
 
-We discuss the relationship to iterative summarization frameworks such as InftyThink~\citep{yan2025inftythink} in Section~\ref{sec:related}; direct empirical comparison is precluded by the differing task setups (monolithic single-question reasoning vs.\ externally-decomposed multi-turn dialogue) and InftyThink's training requirement.
+We discuss the relationship to iterative summarization frameworks such as InftyThink~\citep{yan2025inftythink} in Section~\ref{sec:realted}; direct empirical comparison is precluded by the differing task setups (monolithic single-question reasoning vs.\ externally-decomposed multi-turn dialogue) and InftyThink's training requirement.
 
 \subsection{Evaluation Metrics}
 \label{sec:metrics}
@@ -153,14 +153,7 @@ To understand the mechanisms behind compression's accuracy gains at 4B/9B and it
 \subsubsection{Why does compression help at 4B?}
 \label{sec:fh_failure}
 
-We annotated 31 problems on which Full History fails but at least one compression method achieves higher per-turn accuracy, at the 4B scale (Table~\ref{tab:fh_failure} in Appendix~\ref{app:results}).
-
-The dominant failure mode is \textbf{answer truncation at \texttt{max\_tokens}} (74\%): Full History accumulates verbatim prior turns, which inflates the input context and forces the model to use more tokens to re-read prior work before generating; combined with the 1024-token per-turn output cap, the model runs out of space mid-derivation. A secondary pattern is \textbf{response-style cascade} (23\%): Agent $\mathcal{A}$'s prior-turn responses, when accumulated in dialogue history, induce the model to produce increasingly verbose meta-reasoning trace in subsequent turns. Compression methods avoid both failures by maintaining only the essential mathematical facts, allowing the reasoner to produce direct answers within the token budget.
-
-\paragraph{Case study.}
-Figure~\ref{fig:case_4b} shows a representative example. By turn 4, the Full History condition has accumulated 1681 tokens of input context from prior turns; Agent $\mathcal{A}$ produces a verbose checklist-style response that exhausts the 1024-token generation budget before reaching the final numerical answer. In contrast, SLSC maintains only 229 tokens of compressed state, allowing the reasoner to produce a direct derivation and correct answer within the token limit.
-
-\begin{figure*}[t]
+\begin{figure*}[!t]
   \centering
   \scriptsize
 
@@ -265,24 +258,31 @@ Figure~\ref{fig:case_4b} shows a representative example. By turn 4, the Full His
     \end{mdframed}
   \end{minipage}
 
-  \caption{Representative failure case at Qwen3.5-4B (problem: number\_theory/1002). \textbf{Left:} Full History accumulates verbose reasoning across turns; by Turn 4, input context reaches 1681 tokens and the generation budget is exhausted, producing only a self-assessment checklist with no numerical answer (response-style cascade). \textbf{Right:} SLSC maintains compressed state (54--121 tokens); Turn 4 input is only 229 tokens, allowing the model to perform direct computation and produce the correct answer. Token reduction: 86\%.}
+  \caption{\textbf{Left:} Full History reaches 1681 tokens by Turn 4; the generation budget is exhausted, yielding only a self-assessment checklist with no numerical answer (response-style cascade). \textbf{Right:} SLSC maintains 54--229 tokens of compressed state, allowing direct computation and a correct answer (86\% token reduction).}
   \label{fig:case_4b}
 \end{figure*}
+
+We annotated 31 problems on which Full History fails but at least one compression method achieves higher per-turn accuracy, at the 4B scale (Table~\ref{tab:fh_failure} in Appendix~\ref{app:results}).
+
+The dominant failure mode is \textbf{answer truncation at \texttt{max\_tokens}} (74\%): Full History accumulates verbatim prior turns, which inflates the input context and forces the model to use more tokens to re-read prior work before generating; combined with the 1024-token per-turn output cap, the model runs out of space mid-derivation. A secondary pattern is \textbf{response-style cascade} (23\%): Agent $\mathcal{A}$'s prior-turn responses, when accumulated in dialogue history, induce the model to produce increasingly verbose meta-reasoning trace in subsequent turns. Compression methods avoid both failures by maintaining only the essential mathematical facts, allowing the reasoner to produce direct answers within the token budget.
+
+\paragraph{Case study.}
+Figure~\ref{fig:case_4b} shows a representative example. By turn 4, the Full History condition has accumulated 1681 tokens of input context from prior turns; Agent $\mathcal{A}$ produces a verbose checklist-style response that exhausts the 1024-token generation budget before reaching the final numerical answer. In contrast, SLSC maintains only 229 tokens of compressed state, allowing the reasoner to produce a direct derivation and correct answer within the token limit.
 
 \subsubsection{Why does compression fail at 2B?}
 \label{sec:slsc_2b_failure}
 
 We similarly annotated 16 problems where compression fails but Full History succeeds, at the 2B scale (Table~\ref{tab:slsc_failure} in Appendix~\ref{app:results}). The dominant pattern is qualitatively different from 4B: 2B reasoners can parse the compressed state structure (0\% parse failures) but struggle to correctly interpret its semantic content. In 81\% of failures, the model encodes a wrong intermediate result in the state as early as turn 1 (e.g., wrong direction vector, wrong angle relation), and all subsequent turns read that incorrect fact as ground truth, compounding the error. In 12\% of cases, the reasoner ignores the compressed state entirely and re-derives answers from the original problem statement only, losing the benefit of accumulated intermediate facts. This suggests a capability threshold: compressed representations require not just syntactic parsing ability, but semantic reasoning capacity to validate and correctly propagate intermediate facts---a capability that 2B models do not reliably exhibit, even though they handle short raw conversation histories adequately. At 4B and above, this threshold is crossed, and compression becomes beneficial.
 
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/per_turn_by_mode.png}
+  \caption{Per-turn Correct Turn Rate across all Qwen3.5 scales (0.8B, 2B, 4B, 9B). Sample sizes by turn: $n_1=n_2=100$, $n_3=87$, $n_4=30$, $n_5=3$. We omit turn 5 from analysis due to small sample. The capability threshold is evident: compression methods harm accuracy at 0.8B/2B but substantially improve it at 4B/9B, with the gap widening at later turns.}
+  \label{fig:per_turn}
+\end{figure}
+
 
 \subsection{Per-turn Accuracy Breakdown}
 \label{sec:per_turn}
-
-\begin{figure*}[!t]
-  \centering
-  \includegraphics[width=0.95\linewidth]{figures/per_turn_by_mode.png}
-  \caption{Per-turn Correct Turn Rate across all Qwen3.5 scales (0.8B, 2B, 4B, 9B). Sample sizes by turn: $n_1=n_2=100$, $n_3=87$, $n_4=30$, $n_5=3$. We omit turn 5 from analysis due to small sample. The capability threshold is evident: compression methods harm accuracy at 0.8B/2B but substantially improve it at 4B/9B, with the gap widening at later turns.}
-  \label{fig:per_turn}
-\end{figure*}
 
 Figure~\ref{fig:per_turn} shows per-turn Correct Turn Rate across all four Qwen3.5 scales. The capability threshold is clearly visible: at 0.8B and 2B, compression methods (especially SLSC with Lean) show sharp accuracy drops across turns, while Full History maintains relatively stable performance. At 4B and 9B, the pattern reverses: compression methods maintain stable accuracy across turns while Full History drops sharply at turns 3 and 4. This crossover supports our interpretation that compressed representations require a minimum reasoning capacity to parse and utilize effectively, and that above this threshold, compression prevents the cumulative cascade effects that degrade Full History performance.

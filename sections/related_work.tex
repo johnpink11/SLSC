@@ -12,15 +12,7 @@ underspecification and clarification rather than numerical chaining. Our dataset
 failures, where each sub-question is fully specified but its solution requires the prior turn's numerical result.
 
 \paragraph{Prompt and token-level compression}
-Prompt compression methods reduce input length while attempting to preserve task performance. LLMLingua~\citep{jiang2023llmlingua} and its
-extensions~\citep{jiang2024longllmlingua} identify and remove low-information tokens via small auxiliary models, operating at the lexical level without awareness of which
-tokens encode task-critical structure. KV-cache eviction methods such as H2O~\citep{zhang2023h2o} and SnapKV~\citep{li2024snapkv} selectively
-retain high-attention tokens during generation, while StreamingLLM~\citep{xiao2024streamingllm} identifies attention sinks at initial positions
-that receive disproportionate weight regardless of semantic content. By design, a numerical constant inside an inequality and a discourse adjective receive comparable
-treatment under token-level methods. SLSC differs along two axes: compression operates over semantic units---atomic mathematical propositions---rather than tokens, and
-is performed by a dedicated curator agent prompted to identify mathematical content. We view the two approaches as orthogonal and do not include
-token-level compression in our experimental comparison, which focuses on state-maintenance strategies sharing the same multi-turn decomposed
-setup.
+Token-level compression methods---including LLMLingua~\citep{jiang2023llmlingua,jiang2024longllmlingua} and KV-cache eviction approaches such as H2O~\citep{zhang2023h2o} and SnapKV~\citep{li2024snapkv}---operate at the lexical level, treating a numerical constant and a discourse adjective equivalently. SLSC instead compresses over semantic units (atomic mathematical propositions) via a dedicated curator agent. We view the two approaches as orthogonal and restrict our comparison to state-maintenance baselines sharing the same multi-turn setup.
 
 \paragraph{Reasoning-state compression and summarization}
 A closer line of work compresses intermediate reasoning state rather than raw inputs. Reflexion~\citep{shinn2023reflexion} condenses prior
